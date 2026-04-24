@@ -1,0 +1,10 @@
+{
+  "name": "koke-moss-sim",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/run-tests.js",
+    "check": "node --check src/main.js && node --check src/scene.js && node --check src/simulation.js && node --check src/renderer.js && node --check src/ui.js"
+  }
+}
