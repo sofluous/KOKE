@@ -20,7 +20,9 @@
   - growth controls work (`moisture`, `slopeBias`, `growthRate`, `decayRate`, `diffusionRate`, `colonization`, `gravityCreep`)
   - performance controls work (`tickEveryFrames`, `batchRatio`)
   - paint tools work (enable paint, select species, adjust radius/strength, erase mode)
+  - paint brush preview ring tracks pointer on mesh and reflects current brush radius
   - painted seeds propagate naturally over subsequent simulation ticks
+  - propagation appears calm/coherent (clustered mats, slower front expansion, observable dormancy/dieback)
   - light/playback/wireframe controls work
   - view preset widget buttons move camera correctly (`iso`, `front`, `top`, `left`)
   - shell controls work (`Start Sim`, `Pause Sim`, theme selector)

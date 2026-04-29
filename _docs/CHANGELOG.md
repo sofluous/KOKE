@@ -7,6 +7,10 @@
 - Added spatial-indexed brush application in `simulation.js` to keep paint strokes performant on dense meshes.
 - Upgraded renderer to species-aware tinting and instanced clump color variation by dominant local species.
 - Added tests covering species habitat preference and brush seeding behavior.
+- Tuned propagation to be calmer and less random by lowering baseline growth speed and introducing lifecycle state (`age`, `dormancy`) per cell.
+- Added `mass` consolidation field and cohesion update to merge nearby colonies into larger continuous growth patches.
+- Added species clump profiles so rendered growth forms differ by species without per-instance mesh allocations.
+- Added viewport brush-radius preview ring for precise painting interaction.
 
 ## 2026-04-23
 - Scaffolded Phase 1 Three.js application structure and entrypoint.

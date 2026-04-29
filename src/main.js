@@ -5,6 +5,8 @@ import { createUI } from "./ui.js";
 import { createDiagnostics } from "./debug.js";
 
 const canvas = document.getElementById("viewport");
+const viewportWrap = document.getElementById("viewportWrap");
+const brushPreview = document.getElementById("brushPreview");
 const snapshotThumb = document.getElementById("snapshotThumb");
 const snapshotTitle = document.getElementById("snapshotTitle");
 const snapshotMeta = document.getElementById("snapshotMeta");
@@ -26,8 +28,13 @@ const simulation = new GrowthSimulation(surface, {
 const speciesCatalog = simulation.getSpeciesCatalog();
 const mossRenderer = createMossRenderer(THREE, scene, meshGeometry, {
   speciesPalette: speciesCatalog.map((species) => species.color),
+  speciesProfiles: speciesCatalog,
 });
-mossRenderer.setCoverage(simulation.fillRawDensityBuffer(), simulation.fillRawSpeciesBuffer());
+mossRenderer.setCoverage(
+  simulation.fillRawDensityBuffer(),
+  simulation.fillRawSpeciesBuffer(),
+  simulation.fillRawMassBuffer()
+);
 mossRenderer.updateClumps(surface.cells, surface.triangles);
 
 let diagnostics;
@@ -69,6 +76,7 @@ const ui = createUI(
     },
     onPaintToggle(enabled) {
       canvas.classList.toggle("is-paint-mode", enabled);
+      if (!enabled) hideBrushPreview();
       diagnostics?.pushLog(`Paint mode ${enabled ? "enabled" : "disabled"}.`);
     },
     onPaintSetting(key, value) {
@@ -117,6 +125,11 @@ const raycaster = new THREE.Raycaster();
 const pointerNdc = new THREE.Vector2();
 let isPainting = false;
 let lastPaintLogAt = 0;
+const cameraRight = new THREE.Vector3();
+const worldP0 = new THREE.Vector3();
+const worldP1 = new THREE.Vector3();
+const ndcP0 = new THREE.Vector3();
+const ndcP1 = new THREE.Vector3();
 
 function pointerToNdc(event) {
   const rect = canvas.getBoundingClientRect();
@@ -149,14 +162,54 @@ function paintFromEvent(event) {
   }
 }
 
+function hideBrushPreview() {
+  brushPreview?.classList.remove("is-visible");
+}
+
+function updateBrushPreview(event) {
+  if (!ui.state.paintEnabled || !brushPreview || !viewportWrap) {
+    hideBrushPreview();
+    return;
+  }
+
+  pointerToNdc(event);
+  raycaster.setFromCamera(pointerNdc, camera);
+  const hits = raycaster.intersectObject(mossRenderer.mesh, false);
+  if (!hits.length) {
+    hideBrushPreview();
+    return;
+  }
+
+  const hit = hits[0].point;
+  const rect = canvas.getBoundingClientRect();
+  const localX = event.clientX - rect.left;
+  const localY = event.clientY - rect.top;
+
+  camera.getWorldDirection(cameraRight);
+  cameraRight.cross(camera.up).normalize();
+  worldP0.copy(hit);
+  worldP1.copy(hit).addScaledVector(cameraRight, ui.state.paintRadius);
+  ndcP0.copy(worldP0).project(camera);
+  ndcP1.copy(worldP1).project(camera);
+  const radiusPx = Math.max(8, Math.abs(ndcP1.x - ndcP0.x) * rect.width * 0.5);
+
+  brushPreview.style.left = `${localX}px`;
+  brushPreview.style.top = `${localY}px`;
+  brushPreview.style.width = `${radiusPx * 2}px`;
+  brushPreview.style.height = `${radiusPx * 2}px`;
+  brushPreview.classList.add("is-visible");
+}
+
 canvas.addEventListener("pointerdown", (event) => {
   if (!ui.state.paintEnabled || event.button !== 0) return;
   isPainting = true;
   controls.enabled = false;
+  updateBrushPreview(event);
   paintFromEvent(event);
 });
 
 canvas.addEventListener("pointermove", (event) => {
+  updateBrushPreview(event);
   if (!isPainting) return;
   paintFromEvent(event);
 });
@@ -168,7 +221,10 @@ function stopPainting() {
 }
 
 canvas.addEventListener("pointerup", stopPainting);
-canvas.addEventListener("pointerleave", stopPainting);
+canvas.addEventListener("pointerleave", () => {
+  stopPainting();
+  hideBrushPreview();
+});
 canvas.addEventListener("pointercancel", stopPainting);
 window.addEventListener("pointerup", stopPainting);
 
@@ -240,7 +296,11 @@ function animate() {
   const simStepped = simulation.updateFrame();
 
   if (simulation.dirty) {
-    mossRenderer.setCoverage(simulation.fillRawDensityBuffer(), simulation.fillRawSpeciesBuffer());
+    mossRenderer.setCoverage(
+      simulation.fillRawDensityBuffer(),
+      simulation.fillRawSpeciesBuffer(),
+      simulation.fillRawMassBuffer()
+    );
     mossRenderer.updateClumps(surface.cells, surface.triangles);
   }
 

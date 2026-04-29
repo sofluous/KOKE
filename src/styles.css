@@ -117,6 +117,26 @@ body {
   cursor: crosshair;
 }
 
+.koke-brush-preview {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid color-mix(in oklab, var(--ds-accent) 80%, white 20%);
+  background: color-mix(in oklab, var(--ds-accent) 14%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in oklab, black 65%, transparent);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 90ms linear;
+}
+
+.koke-brush-preview.is-visible {
+  opacity: 1;
+}
+
 .koke-pad-cell {
   display: block;
   width: var(--ds-control-h-sm);

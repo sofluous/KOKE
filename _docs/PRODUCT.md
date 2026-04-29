@@ -76,6 +76,10 @@ Build a modular, performant browser-based 3D simulation where moss coverage grow
 - Added patch-based seeding and diffusion smoothing for less geometric growth fronts.
 - Added `colonization` and `gravityCreep` parameters to better shape spread and moisture-biased creep.
 - UI now exposes growth and performance controls in grouped folders for faster tuning.
+- Growth now follows a calmer lifecycle loop (`age`, `dormancy`, `mass`) to reduce rapid/random spread and create slower contiguous expansion.
+- Added cohesion-based consolidation so nearby colonies merge into larger moss mats instead of isolated points.
+- Species include clump behavior profiles to vary rendered shape character (flatter lichen mats vs tufted velvet growth).
+- Added brush radius preview in viewport for more precise seeding before propagation.
 
 
 Below is a **clean, formal design document** followed by a **well-structured Codex prompt** designed to initiate development with clarity and strong architectural direction.

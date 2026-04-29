@@ -6,33 +6,36 @@ export const mossSpeciesCatalog = [
     key: "forest_moss",
     name: "Forest Moss",
     color: "#5f8f4f",
-    growthMultiplier: 1,
-    decayMultiplier: 0.95,
+    growthMultiplier: 0.92,
+    decayMultiplier: 0.9,
     moisturePreference: 0.72,
     slopePreference: 0.58,
-    spreadStrength: 1,
+    spreadStrength: 0.86,
+    clumpProfile: { scale: 1, verticality: 0.88, patchiness: 0.62 },
   },
   {
     id: 1,
     key: "rock_lichen",
     name: "Rock Lichen",
     color: "#8cae78",
-    growthMultiplier: 0.78,
-    decayMultiplier: 0.72,
+    growthMultiplier: 0.58,
+    decayMultiplier: 0.62,
     moisturePreference: 0.44,
     slopePreference: 0.82,
-    spreadStrength: 0.7,
+    spreadStrength: 0.52,
+    clumpProfile: { scale: 1.18, verticality: 0.42, patchiness: 0.46 },
   },
   {
     id: 2,
     key: "velvet_moss",
     name: "Velvet Moss",
     color: "#4f8557",
-    growthMultiplier: 1.2,
-    decayMultiplier: 1.06,
+    growthMultiplier: 1.02,
+    decayMultiplier: 0.98,
     moisturePreference: 0.84,
     slopePreference: 0.42,
-    spreadStrength: 1.18,
+    spreadStrength: 0.96,
+    clumpProfile: { scale: 1.06, verticality: 1.18, patchiness: 0.74 },
   },
 ];
 
@@ -40,13 +43,15 @@ export const defaultEnvironment = {
   moisture: 0.58,
   slopeBias: 0.72,
   lightInfluence: 0.66,
-  growthRate: 0.55,
-  decayRate: 0.45,
-  colonization: 0.62,
-  diffusionRate: 0.36,
-  gravityCreep: 0.24,
-  tickEveryFrames: 5,
-  batchRatio: 0.28,
+  growthRate: 0.32,
+  decayRate: 0.2,
+  colonization: 0.38,
+  diffusionRate: 0.2,
+  gravityCreep: 0.21,
+  cohesionRate: 0.34,
+  cycleSpeed: 0.24,
+  tickEveryFrames: 6,
+  batchRatio: 0.22,
 };
 
 export function clamp01(value) {
@@ -68,36 +73,49 @@ function speciesPreferenceWeight(cell, environment, speciesProfile) {
   const slopeDistance = Math.abs(cell.slope - speciesProfile.slopePreference);
   const moistureFit = 1 - moistureDistance;
   const slopeFit = 1 - slopeDistance;
-  return clamp01(0.72 + moistureFit * 0.18 + slopeFit * 0.1);
+  return clamp01(0.66 + moistureFit * 0.22 + slopeFit * 0.12);
 }
 
 export function evaluateHabitat(cell, environment, speciesProfile = null) {
   const slopeSuitability = 1 - Math.abs(cell.slope - environment.slopeBias);
   const shade = 1 - clamp01(cell.lightFacing);
-  const heightPenalty = clamp01((cell.heightNorm - 0.75) * 1.4);
+  const heightPenalty = clamp01((cell.heightNorm - 0.76) * 1.3);
   const moistureScore = clamp01(environment.moisture * 0.75 + shade * 0.25);
   const lightScore = clamp01(
     environment.lightInfluence * (0.2 + cell.lightFacing * 0.8) +
     (1 - environment.lightInfluence) * shade
   );
-  const base = clamp01(slopeSuitability * 0.36 + moistureScore * 0.42 + lightScore * 0.22 - heightPenalty * 0.16);
+  const base = clamp01(slopeSuitability * 0.34 + moistureScore * 0.44 + lightScore * 0.22 - heightPenalty * 0.14);
   return clamp01(base * speciesPreferenceWeight(cell, environment, speciesProfile));
 }
 
+function cycleWindow(cell, environment) {
+  const cycleSpeed = environment.cycleSpeed ?? 0.24;
+  const maturity = clamp01(cell.age * cycleSpeed * 0.0065);
+  const spring = 1 - Math.pow(1 - maturity, 2);
+  const dormancyDrag = cell.dormancy * 0.6;
+  return clamp01(0.18 + spring * 0.82 - dormancyDrag);
+}
+
 export function updateCellState(cell, habitat, neighborDensity, environment, speciesProfile = null) {
-  const colonization = environment.colonization ?? 0.62;
-  const support = clamp01(
-    neighborDensity * (0.55 + colonization * 0.35) +
-    habitat * (0.45 - colonization * 0.2)
-  );
-  const crowding = 0.35 + (1 - colonization) * 0.25;
+  const colonization = environment.colonization ?? 0.38;
+  const support = clamp01(neighborDensity * (0.62 + colonization * 0.25) + habitat * (0.38 - colonization * 0.16));
   const growthFactor = speciesProfile?.growthMultiplier ?? 1;
   const decayFactor = speciesProfile?.decayMultiplier ?? 1;
-  const growth = environment.growthRate * growthFactor * Math.max(0, support - cell.density * crowding);
-  const stress = Math.max(0, 0.45 - habitat) * environment.decayRate * decayFactor;
-  const nextDensity = clamp01(cell.density + growth * 0.06 - stress * 0.04);
-  const nextHealth = clamp01(cell.health + (habitat - 0.5) * 0.08 + (nextDensity - cell.density) * 0.6);
-  return { density: nextDensity, health: nextHealth };
+  const cycle = cycleWindow(
+    {
+      age: cell.age ?? 0,
+      dormancy: cell.dormancy ?? 0,
+    },
+    environment
+  );
+
+  const frontier = Math.max(0, support - cell.density);
+  const growth = environment.growthRate * growthFactor * frontier * cycle;
+  const stress = Math.max(0, 0.48 - habitat) * environment.decayRate * decayFactor;
+  const nextDensity = clamp01(cell.density + growth * 0.038 - stress * 0.028);
+  const nextHealth = clamp01(cell.health + (habitat - 0.52) * 0.055 + (nextDensity - cell.density) * 0.45 - (cell.dormancy ?? 0) * 0.03);
+  return { density: nextDensity, health: nextHealth, cycle };
 }
 
 function quantize(value) {
@@ -126,18 +144,14 @@ function chooseInitialSpecies(cell, seed, patch) {
   return 0;
 }
 
-function spatialKey(x, y, z, cellSize) {
-  const ix = Math.floor(x / cellSize);
-  const iy = Math.floor(y / cellSize);
-  const iz = Math.floor(z / cellSize);
-  return `${ix}|${iy}|${iz}`;
-}
-
 function buildSpatialIndex(cells, cellSize = 0.35) {
   const buckets = new Map();
   for (let i = 0; i < cells.length; i += 1) {
     const cell = cells[i];
-    const key = spatialKey(cell.x, cell.y, cell.z, cellSize);
+    const ix = Math.floor(cell.x / cellSize);
+    const iy = Math.floor(cell.y / cellSize);
+    const iz = Math.floor(cell.z / cellSize);
+    const key = `${ix}|${iy}|${iz}`;
     let bucket = buckets.get(key);
     if (!bucket) {
       bucket = [];
@@ -183,7 +197,10 @@ export function analyzeSurface(geometry, lightDirection) {
         heightNorm: 0,
         lightFacing: clamp01(dot({ x: nx, y: ny, z: nz }, lightDirection) * 0.5 + 0.5),
         density: 0,
+        mass: 0,
         health: 0.5,
+        age: 0,
+        dormancy: 0,
         speciesId: 0,
         neighbors: new Set(),
       });
@@ -218,11 +235,13 @@ export function analyzeSurface(geometry, lightDirection) {
     cell.heightNorm = (cell.height - minHeight) / heightRange;
     const seed = pseudoSeed(cell.x, cell.y, cell.z);
     const blobs = patchNoise(cell.x, cell.y, cell.z);
-    const basalSuitability = clamp01(0.58 - Math.abs(cell.slope - 0.62));
-    const patchSeed = clamp01((blobs - 0.56) * 1.8);
-    const rareSeed = Math.max(0, seed - 0.96) * 0.3;
-    cell.density = clamp01(basalSuitability * 0.06 + patchSeed * 0.18 + rareSeed);
-    cell.health = clamp01(0.44 + basalSuitability * 0.22 + patchSeed * 0.18);
+    const basalSuitability = clamp01(0.54 - Math.abs(cell.slope - 0.62));
+    const patchSeed = clamp01((blobs - 0.6) * 1.6);
+    const rareSeed = Math.max(0, seed - 0.972) * 0.12;
+    cell.density = clamp01(basalSuitability * 0.03 + patchSeed * 0.08 + rareSeed);
+    cell.mass = cell.density;
+    cell.health = clamp01(0.42 + basalSuitability * 0.19 + patchSeed * 0.13);
+    cell.age = clamp01(cell.density * 3.2);
     cell.speciesId = chooseInitialSpecies(cell, seed, blobs);
     cell.neighbors = Array.from(cell.neighbors);
   }
@@ -244,6 +263,7 @@ export class GrowthSimulation {
     this.batchCursor = 0;
     this.pendingDensity = new Float32Array(this.rawCount);
     this.pendingSpecies = new Float32Array(this.rawCount);
+    this.pendingMass = new Float32Array(this.rawCount);
     this.spatialIndex = buildSpatialIndex(this.cells, 0.33);
     this.speciesWeightScratch = new Float32Array(this.speciesCount);
     this.dirty = true;
@@ -293,6 +313,9 @@ export class GrowthSimulation {
       const cell = this.cells[i];
       const neighbors = cell.neighbors;
       let neighborTotal = 0;
+      let neighborMass = 0;
+      let occupiedNeighbors = 0;
+      let flowCarry = 0;
       this.speciesWeightScratch.fill(0);
 
       for (let n = 0; n < neighbors.length; n += 1) {
@@ -302,16 +325,40 @@ export class GrowthSimulation {
         const speciesSpread = this.speciesCatalog[neighbor.speciesId]?.spreadStrength ?? 1;
         const weightedDensity = neighbor.density * weight;
         neighborTotal += weightedDensity;
-        this.speciesWeightScratch[neighbor.speciesId] += weightedDensity * (0.65 + neighbor.health * 0.35) * speciesSpread;
+        neighborMass += neighbor.mass;
+        if (neighbor.density > 0.08) occupiedNeighbors += 1;
+        flowCarry = Math.max(flowCarry, weightedDensity * runoff);
+        this.speciesWeightScratch[neighbor.speciesId] += weightedDensity * (0.58 + neighbor.health * 0.42) * speciesSpread;
       }
 
-      const neighborDensity = neighbors.length ? neighborTotal / neighbors.length : 0;
+      const neighborCount = neighbors.length || 1;
+      const neighborDensity = neighborTotal / neighborCount;
+      const occupiedRatio = occupiedNeighbors / neighborCount;
+      const localMass = neighborMass / neighborCount;
       const speciesProfile = this.speciesCatalog[cell.speciesId] || this.speciesCatalog[0];
       const habitat = evaluateHabitat(cell, this.environment, speciesProfile);
       const next = updateCellState(cell, habitat, neighborDensity, this.environment, speciesProfile);
-      const diffusion = (neighborDensity - cell.density) * this.environment.diffusionRate;
-      cell.density = clamp01(next.density + diffusion * 0.12);
-      cell.health = clamp01(next.health + diffusion * 0.08);
+
+      const cohesion = (localMass - cell.density) * (this.environment.cohesionRate ?? 0.34) * 0.16;
+      const frontierPush = Math.max(0, neighborDensity - cell.density) * (0.24 + occupiedRatio * 0.62 + flowCarry * 0.18);
+      const calmDiffusion = (neighborDensity - cell.density) * this.environment.diffusionRate * 0.08;
+      const stabilized = next.density + frontierPush * 0.03 + cohesion + calmDiffusion;
+      cell.density = clamp01(stabilized);
+
+      if (habitat < 0.46 && cell.density > 0.08) {
+        cell.dormancy = clamp01(cell.dormancy + (0.48 - habitat) * 0.045);
+      } else {
+        cell.dormancy = clamp01(cell.dormancy - (habitat - 0.44) * 0.03);
+      }
+
+      if (cell.density > 0.02) {
+        cell.age = clamp01(cell.age + (0.2 + cell.density * 0.8) * 0.018);
+      } else {
+        cell.age = clamp01(cell.age - 0.012);
+      }
+
+      cell.health = clamp01(next.health + (occupiedRatio - 0.35) * 0.03 - cell.dormancy * 0.035);
+      cell.mass = clamp01(cell.mass * 0.72 + cell.density * 0.28 + Math.max(0, localMass - cell.density) * 0.14);
 
       let dominantSpecies = cell.speciesId;
       let dominantWeight = 0;
@@ -322,15 +369,16 @@ export class GrowthSimulation {
         }
       }
 
-      if (dominantSpecies !== cell.speciesId && cell.density < 0.22) {
-        const pressure = neighbors.length ? dominantWeight / neighbors.length : 0;
-        const spreadChance = clamp01(pressure * (0.4 + this.environment.colonization * 0.9));
-        const chanceSeed = pseudoSeed(cell.x + this.totalTicks * 0.003, cell.y, cell.z);
+      if (dominantSpecies !== cell.speciesId && cell.density < 0.18 && occupiedRatio > 0.22) {
+        const pressure = dominantWeight / neighborCount;
+        const spreadChance = clamp01(pressure * (0.18 + this.environment.colonization * 0.46));
+        const chanceSeed = pseudoSeed(cell.x + this.totalTicks * 0.0008, cell.y, cell.z);
         if (chanceSeed < spreadChance) cell.speciesId = dominantSpecies;
       }
 
-      if (cell.density < 0.01) {
-        cell.health = clamp01(cell.health * 0.98);
+      if (cell.density < 0.009) {
+        cell.health = clamp01(cell.health * 0.985);
+        if (cell.health < 0.15) cell.dormancy = clamp01(cell.dormancy + 0.02);
       }
     }
 
@@ -375,15 +423,20 @@ export class GrowthSimulation {
             const falloff = 1 - Math.sqrt(d2) / radius;
             const influence = strength * falloff;
             if (erase) {
-              cell.density = clamp01(cell.density - influence * 0.65);
-              cell.health = clamp01(cell.health - influence * 0.35);
+              cell.density = clamp01(cell.density - influence * 0.42);
+              cell.mass = clamp01(cell.mass - influence * 0.35);
+              cell.health = clamp01(cell.health - influence * 0.24);
+              cell.dormancy = clamp01(cell.dormancy + influence * 0.08);
               if (cell.density < 0.02) cell.speciesId = 0;
             } else {
-              if (cell.density < 0.09 || influence > 0.22) {
+              if (cell.density < 0.1 || influence > 0.2) {
                 cell.speciesId = speciesId;
               }
-              cell.density = clamp01(cell.density + influence * 0.58);
-              cell.health = clamp01(Math.max(cell.health, 0.4) + influence * 0.18);
+              cell.density = clamp01(cell.density + influence * 0.32);
+              cell.mass = clamp01(cell.mass + influence * 0.4);
+              cell.health = clamp01(Math.max(cell.health, 0.42) + influence * 0.16);
+              cell.age = clamp01(cell.age + influence * 0.09);
+              cell.dormancy = clamp01(cell.dormancy - influence * 0.14);
             }
             painted += 1;
           }
@@ -413,6 +466,13 @@ export class GrowthSimulation {
       this.pendingSpecies[i] = this.cells[this.rawToCell[i]].speciesId;
     }
     return this.pendingSpecies;
+  }
+
+  fillRawMassBuffer() {
+    for (let i = 0; i < this.rawCount; i += 1) {
+      this.pendingMass[i] = this.cells[this.rawToCell[i]].mass;
+    }
+    return this.pendingMass;
   }
 
   getStats() {
