@@ -1,454 +1,145 @@
 # PRODUCT
 
+## Studio organization decision - 2026-09-11
+Adopt a left rail/control panel, central viewport with transport below it, and right observation panel. Group Scene, Moss, Render, Export and Settings consistently with the related app projects. The [studio proposal](STUDIO_PROPOSAL.md) records the full future pipeline. Panel operations and display preferences preserve simulation state. Transport is elapsed-time playback, not arbitrary timeline seeking.
+
+## Appearance controls - 2026-09-11
+Rock, Sphere and Icosahedron are selectable built-in radial surfaces. The renderer offers a continuous mat, triangle, diamond, crossed-card, low-poly clump and detailed-shoot representations with independent density and proportions. Root/tip/stressed palettes can map species, health, thickness, moisture or height. These are render decisions and preserve biological field state. Surface changes also preserve that UV field but rebuild surface-dependent habitat and clear world-space spores.
+
+## Current implementation - 2026-09-11
+The reference-led redesign is implemented for one built-in radial rock. A shared object-space surface model drives habitat, painting, moss placement, and spore collision. The live field advances at 20 fixed steps per simulated second and preserves species lineage. Biomass, cushion thickness, wetness, age, stress, dead matter, and dormant reserves now have distinct roles.
+
+Rendering combines a textured substrate, continuous basal mat, 1,500 instanced cushion anchors, and up to 60,000 leafy shoot instances (30,000 in Low detail). Species weights affect color and shoot shape. Stress browns and flattens growth; moisture restoration activates species-specific dormant reserves. A bounded pool of 160 spores supports release, flight, landing, delayed germination, and expiry.
+
+Mature, Seed, and Bare reset presets provide repeatable starting points. Start/Pause, moisture, growth controls, playback speed, aging, painting, macro camera, optional dew, and optional soft focus are available. Capture renders the current effects immediately before producing its PNG.
+
+New modules: `substrate.js` owns radial geometry/mapping; `spores.js` owns causal particle state; `view-effects.js` owns optional depth of field. `field-sim.js` and `field-renderer.js` are the active implementation; legacy simulation/rendering remain available as reference. No arbitrary imported, folded, or porous surfaces are supported by this radial mapping. The fixed-time solver clamps unusually long frame gaps to 0.25 seconds to avoid runaway catch-up.
+
+This implementation supersedes the color-only/shader-first priorities and proposed-status statements in the earlier planning record below. See [delivery notes](data/MOSS_IMPLEMENTATION_2026-09-11.md).
+
+## Visual audit update — 2026-09-10
+The user requests richer growth, collapse, spread, clumps, texture, and particles guided by four supplied renders. The [current-code audit](data/MOSS_RENDERING_AUDIT_2026-09-10.md) identifies correctness defects and concludes that color-only coverage cannot meet that target. Its proposal retains the continuous field but adds raised cushions and fine shoots driven by persistent lifecycle state, followed by causal spore particles. This is a proposed revision to the shader-first visual priorities below; no rendering redesign has yet been implemented.
+
 ## Goal
-Build a modular, performant browser-based 3D simulation where moss coverage grows over mesh surfaces in real time based on environmental factors.
+Build an ambient browser-based moss growth simulation that proves the visual language, pacing, and mood of KOKE before expanding into a more interactive moss painting tool.
+
+## Product Position
+KOKE is currently an ambient growth object, not a full simulation platform and not yet a painter-first tool.
+
+The immediate purpose is to answer one question:
+
+Can we create a slow, beautiful, believable moss growth aesthetic that feels worth looking at on its own?
+
+If the answer is yes, the project can then expand into a guided painting mode that lets the user seed or shape growth intentionally.
+
+## Current Product Decision
+
+### Phase 1: Ambient Growth Sim
+Focus on:
+- one built-in object
+- one strong visual loop
+- slow autonomous growth
+- minimal interaction
+- visual tuning and aesthetic verification
+
+### Phase 2: Moss Painting Mode
+Add:
+- direct user seeding/painting
+- painter-oriented controls
+- simplified artistic control over spread and decay
+
+Painting remains in scope for the project, but it is not the feature that should define the first success milestone.
 
 ## Architecture
-- `src/scene.js`: Three.js setup, controls, camera, lights, mesh bootstrap.
-- `src/simulation.js`: Surface analysis, per-cell growth/decay, batched simulation updates.
-- `src/renderer.js`: Hybrid rendering with shader tint + instanced clumps.
-- `src/ui.js`: DS-tokenized control binding layer for shell controls and view actions.
-- `src/debug.js`: Live diagnostics panel and report snapshot builder.
-- `src/main.js`: Composition root and animation loop orchestration.
+- `src/scene.js`: Three.js setup, camera, lighting, controls, built-in mesh bootstrap.
+- `src/simulation.js`: surface analysis helpers and legacy cell-based prototype logic retained as reference.
+- `src/renderer.js`: legacy hybrid renderer retained as reference.
+- `src/field-sim.js`: ambient-first texture field simulation with species channels and wet-growth lifecycle state.
+- `src/field-renderer.js`: shader-driven contiguous moss carpet renderer.
+- `src/ui.js`: control and utility shell bindings.
+- `src/debug.js`: diagnostics panel and snapshot/report helpers.
+- `src/main.js`: composition root and animation loop orchestration.
 
-## Data model
-- Surface is represented as welded vertex cells derived from geometry positions.
-- Cell fields:
-  - `density` in `[0..1]`
-  - `health` in `[0..1]`
-  - `speciesId` (active species seed/ownership)
-  - `slope`, `heightNorm`, `lightFacing`
-  - `neighbors[]`
+## Core Experience
+
+### What the user should feel
+- calm
+- curiosity
+- visual richness without clutter
+- confidence that the system has a clear aesthetic identity
+
+### What the user should do
+- load the page
+- watch the object evolve
+- make a few light adjustments to compare visual outcomes
+- capture snapshots for review
+
+### What the user should not need to do
+- learn a large control surface
+- manage species libraries
+- import assets
+- think about technical simulation settings unless we are tuning internally
+
+## MVP Definition
+The ambient-first MVP should include:
+- one built-in object
+- autonomous moss growth over time
+- one cohesive visual style
+- lighting and camera controls
+- minimal growth tuning controls
+- snapshot export for visual review
+- diagnostics available for development, not as a primary user-facing feature
+
+## Success Criteria
+
+### Primary
+- the growth reads as continuous moss coverage rather than noisy procedural texture
+- the object feels visually compelling when left running passively
+- the pacing feels intentional: not static, not chaotic
+- the project produces frames or short captures that are aesthetically worth keeping
+
+### Secondary
+- the rendering remains smooth on the target hardware for the built-in object
+- a small set of controls is enough to explore meaningful look variations
+- the code path for ambient growth is simple enough to iterate on quickly
+
+## Non-Goals For This Phase
+- arbitrary 3D object import
+- encyclopedia/species education features
+- scientific or ecological accuracy as a primary promise
+- large parameter surfaces for end users
+- broad export tooling beyond what is needed for look evaluation
+- fully productized painting workflows
+
+## Visual Priorities
+- contiguous moss mats over spotty point growth
+- clear lifecycle phases: wet, bloom, mature, fade
+- strong silhouette read at a distance
+- rich close-up surface character without noisy shader clutter
+- slower, more meditative evolution over reactive simulation drama
+
+## Technical Priorities
+- commit to the field-based growth/rendering direction for visual evaluation
+- keep simulation cadence decoupled from render cadence
+- bias toward shader-driven continuity over geometry-heavy detail
+- optimize for one known object first instead of designing for arbitrary mesh support
 
 ## Constraints
-- Simulation updates every `N` render frames (`tickEveryFrames`) instead of every frame.
-- Each tick processes only a batch (`batchRatio`) of cells to cap CPU spikes.
-- Instanced rendering is used for visible clumps to avoid per-instance mesh allocation.
-
-## Assumptions (Phase 1)
-- Uses an internal primitive mesh (`IcosahedronGeometry`) as the test surface instead of loading GLTF.
-- Species set is intentionally fixed to a small built-in catalog (`Forest Moss`, `Rock Lichen`, `Velvet Moss`) for iterative tuning.
-- No persistence/export in this phase.
-
-## Interactive Paint Tooling (Current)
-- Brush painting is event-driven (pointer + raycast) and does not run inside the per-frame loop.
-- Painter controls:
-  - `Paint` toggle
-  - species selector
-  - brush radius
-  - brush strength
-  - erase mode
-- Species seeding from paint strokes feeds the same batched simulation system, so painted areas continue natural spread/decay after seeding.
-- A lightweight spatial index over simulation cells is used for brush queries to keep strokes performant on high-density meshes.
-
-## Design System Foundation (Current)
-- KOKE consumes the shared included package at `design-system/`:
-  - `design-system/theme.css`
-  - `design-system/js/theme-registry.js`
-  - `design-system/js/theme-selector.js`
-- App-local CSS (`src/styles.css`) is now layout-specific only and references shared DS tokens/classes (`--ds-*`, `.ds-*`).
-- Local design-system source files are intentionally avoided to prevent divergence from the shared system.
-- The UI shell now follows a studio layout:
-  - sticky top control bar
-  - left control panel
-  - center viewport card
-  - right utility panel with rail navigation for `view`, `snapshot`, `diagnostics`, `export`, `settings`
-  - compact header actions with a `Settings` shortcut that opens the utility rail settings tab
-  - consolidated 3D camera controls in a single DS camera-pad style widget (no duplicated view controls across zones)
-
-## Debug and Perf Instrumentation (Current)
-- `src/debug.js` drives a diagnostics panel with:
-  - FPS and frame time
-  - simulation ticks per second and last tick cost
-  - active-cell ratio and average density
-  - clump counts and current batch size
-- Copyable runtime snapshots were added to improve bug reports and issue communication.
-- Basic UX controls are present in the shell:
-  - `Start Sim`
-  - `Pause Sim`
-  - theme selection (`data-ds-theme-select`)
-- Added shell utility flows:
-  - 3D view presets (`Iso`, `Front`, `Top`, `Left`)
-  - in-app view snapshot preview
-  - PNG export and JSON report export
-
-## Moss Behavior Progress (Current)
-- Added patch-based seeding and diffusion smoothing for less geometric growth fronts.
-- Added `colonization` and `gravityCreep` parameters to better shape spread and moisture-biased creep.
-- UI now exposes growth and performance controls in grouped folders for faster tuning.
-- Growth now follows a calmer lifecycle loop (`age`, `dormancy`, `mass`) to reduce rapid/random spread and create slower contiguous expansion.
-- Added cohesion-based consolidation so nearby colonies merge into larger moss mats instead of isolated points.
-- Species include clump behavior profiles to vary rendered shape character (flatter lichen mats vs tufted velvet growth).
-- Added brush radius preview in viewport for more precise seeding before propagation.
-
-
-Below is a **clean, formal design document** followed by a **well-structured Codex prompt** designed to initiate development with clarity and strong architectural direction.
-
----
-
-# Moss Growth Art App
-
-## Formal Design Document (v1.0)
-
----
-
-## 1. Project Title
-
-**Moss Growth Art App (Working Title)**
-
----
-
-## 2. Executive Summary
-
-The Moss Growth Art App is a real-time, procedural 3D application that simulates the organic growth of mosses and lichens across surfaces of virtual objects. The system blends ecological logic with artistic rendering to create evolving, living sculptures.
-
-Users can import or select 3D objects, define environmental conditions, and observe slow, naturalistic colonization over time. The application functions as both a generative art tool and an interactive scientific display.
-
----
-
-## 3. Objectives
-
-### Primary Objectives
-
-* Simulate believable moss and lichen growth over 3D surfaces
-* Maintain high rendering performance across devices
-* Provide a visually compelling, ambient experience
-* Support export of still and animated outputs
-
-### Secondary Objectives
-
-* Educate users through a structured species library
-* Enable creative exploration through environmental controls
-* Support extensibility for future simulation complexity
-
----
-
-## 4. Scope
-
-### In Scope
-
-* 3D object import and visualization
-* Procedural growth simulation
-* Environmental influence modeling
-* Species library and metadata display
-* Real-time rendering modes
-* Export (image, GIF, video)
-
-### Out of Scope (Initial Release)
-
-* Full biological accuracy
-* Multiplayer or shared environments
-* Complex physics interactions
-* Full ecosystem simulation (beyond surface growth)
-
----
-
-## 5. System Overview
-
-The application consists of four primary systems:
-
-1. **Surface Analysis System**
-   Interprets mesh geometry for ecological suitability.
-
-2. **Growth Simulation System**
-   Drives propagation, decay, and dormancy.
-
-3. **Rendering System**
-   Displays moss using layered visual techniques.
-
-4. **User Interface System**
-   Controls interaction, visualization, and data display.
-
----
-
-## 6. Core Features
-
-### 6.1 3D Object System
-
-* Import standard 3D formats (GLTF/OBJ recommended)
-* Auto-scale and center objects
-* Generate surface analysis data on load
-* Orbit camera with zoom and pan
-
----
-
-### 6.2 Growth Simulation
-
-#### Functional Behavior
-
-* Moss propagates across surface cells
-* Growth influenced by environmental parameters
-* Supports:
-
-  * expansion
-  * dormancy
-  * dieback
-  * recolonization
-
-#### Simulation Model
-
-Growth operates on a surface-based map rather than individual strands.
-
-Each surface unit stores:
-
-* species ID
-* density
-* moisture
-* health
-* age
-* dormancy state
-
----
-
-### 6.3 Environmental System
-
-#### Input Parameters
-
-* Light direction and intensity
-* Moisture / humidity
-* Water proximity
-* Surface angle
-* Depth / concavity
-* Temperature (optional future phase)
-
-#### Derived Values
-
-* Wetness score
-* Exposure level
-* Retention factor
-* Growth suitability
-
----
-
-### 6.4 Species Library
-
-Each species includes:
-
-* common name
-* scientific name
-* type (moss / lichen)
-* habitat
-* environmental preferences
-* growth traits
-* visual characteristics
-* descriptive notes
-
----
-
-### 6.5 Rendering System
-
-#### Rendering Layers
-
-**Layer 1: Surface Mask**
-Controls colonization distribution.
-
-**Layer 2: Shader-Based Growth**
-Applies color, roughness, and soft blending.
-
-**Layer 3: Instanced Geometry**
-Adds moss clusters for depth.
-
-Geometry instancing enables efficient rendering of repeated elements without duplicating geometry, significantly improving performance ([Wikipedia][1]).
-
-**Layer 4: Detail Layer (Optional)**
-Adds micro features such as fuzz or sporophytes.
-
----
-
-### 6.6 Visualization Modes
-
-* Standard shaded
-* Wireframe
-* Ambient occlusion
-* Cel shading
-* Debug overlays (growth maps, moisture, light)
-
-Procedural shader techniques allow surface effects to adapt dynamically to geometry without requiring pre-baked textures ([The Gnomon Workshop][2]).
-
----
-
-### 6.7 Export System
-
-Supports:
-
-* PNG image export
-* GIF animation export
-* Video export (MP4/WebM)
-* Time-lapse generation
-
----
-
-## 7. User Modes
-
-### Ambient Mode
-
-* Minimal UI
-* Continuous passive growth
-* Designed for visual display
-
-### Simulation Mode
-
-* Full controls visible
-* Adjustable environmental parameters
-* Time scaling
-
-### Encyclopedia Mode
-
-* Species inspection
-* Scientific data display
-* Surface labeling
-
----
-
-## 8. Technical Architecture
-
-### 8.1 Growth Representation
-
-Growth is stored in a **surface-based grid or texture space**, rather than per-vertex geometry.
-
-Recommended approaches:
-
-* UV-space growth map
-* Vertex density map
-* Surface sampling grid
-
----
-
-### 8.2 Simulation Loop
-
-Each simulation step:
-
-1. Evaluate environmental conditions
-2. Update health per cell
-3. Spread to neighboring cells
-4. Apply decay or dormancy
-5. Update density values
-
-Simulation runs at a lower frequency than rendering for performance.
-
----
-
-### 8.3 Rendering Strategy
-
-#### Hybrid Model
-
-* Early growth: shader-based blending
-* Medium growth: decals or density-based visuals
-* Dense growth: instanced geometry
-
-Procedural moss systems often rely on instancing and masking techniques to maintain performance while achieving visual richness ([Superhive (formerly Blender Market)][3]).
-
----
-
-### 8.4 Performance Strategy
-
-* Use instancing for repeated geometry
-* Separate simulation tick rate from render rate
-* Use Level of Detail (LOD) scaling
-* Cull off-screen geometry
-* Freeze inactive simulation regions
-* Use low-resolution simulation maps with visual upscaling
-
----
-
-## 9. Data Structures
-
-### Growth Cell
-
-```
-{
-  speciesId,
-  density,
-  health,
-  moisture,
-  age,
-  dormancyState
-}
-```
-
-### Species Definition
-
-```
-{
-  id,
-  nameCommon,
-  nameScientific,
-  type,
-  growthRate,
-  moisturePreference,
-  lightPreference,
-  spreadPattern,
-  dormancyBehavior,
-  visualProfile
-}
-```
-
----
-
-## 10. MVP Definition
-
-The first release should include:
-
-* One object (import or built-in)
-* One moss species
-* Basic growth spread
-* Simple environmental influence
-* Orbit camera
-* Lighting control
-* Image export
-* Stable performance
-
----
-
-## 11. Development Phases
-
-### Phase 1: Core Prototype
-
-* Surface analysis
-* Basic growth mask
-* Camera and lighting
-
-### Phase 2: Environmental Simulation
-
-* Moisture and light influence
-* Growth rules
-
-### Phase 3: Rendering Upgrade
-
-* Shader blending
-* Instanced moss clusters
-
-### Phase 4: Species Library
-
-* Data structure
-* HUD system
-
-### Phase 5: Export Tools
-
-* Image, GIF, video
-
----
-
-## 12. Risks
-
-* Performance degradation from over-instancing
-* Unrealistic growth patterns
-* Complex UI overwhelming user
-* Poor mesh input quality
-
----
-
-## 13. Success Criteria
-
-* Smooth real-time performance
-* Visually believable growth
-* Clear and minimal interface
-* Export outputs usable for art and documentation
-
----
-
-
-## Closing Thought
-
-What you’re building sits in a rare intersection:
-**procedural art, ecology, and interactive systems design.**
+- current implementation uses a built-in primitive mesh for evaluation
+- browser-based rendering must remain performant without a heavy asset pipeline
+- the current repo may continue to hold legacy prototype paths temporarily, but new work should not split focus between architectures
+
+## Known Risks
+- visual complexity may still read as procedural noise instead of moss
+- too many controls may distract from evaluating the ambient experience
+- keeping legacy and current paths side-by-side for too long may slow decision-making
+- the built-in object may overfit the look and hide problems that appear on other surfaces later
+
+## Follow-On Expansion Path
+If the ambient simulation succeeds, the next product step is a moss painting mode with:
+- paint to seed growth
+- erase/thin growth
+- species or style presets
+- guided artistic control with fewer raw simulation parameters
+
+That future mode should inherit the validated ambient visual system rather than invent a separate rendering identity.

@@ -114,7 +114,9 @@ export function updateCellState(cell, habitat, neighborDensity, environment, spe
   const growth = environment.growthRate * growthFactor * frontier * cycle;
   const stress = Math.max(0, 0.48 - habitat) * environment.decayRate * decayFactor;
   const nextDensity = clamp01(cell.density + growth * 0.038 - stress * 0.028);
-  const nextHealth = clamp01(cell.health + (habitat - 0.52) * 0.055 + (nextDensity - cell.density) * 0.45 - (cell.dormancy ?? 0) * 0.03);
+  const nextHealth = clamp01(
+    cell.health + (habitat - 0.52) * 0.055 + (nextDensity - cell.density) * 0.45 - (cell.dormancy ?? 0) * 0.03
+  );
   return { density: nextDensity, health: nextHealth, cycle };
 }
 
@@ -173,6 +175,10 @@ export function analyzeSurface(geometry, lightDirection) {
 
   let minHeight = Infinity;
   let maxHeight = -Infinity;
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
 
   for (let i = 0; i < rawCount; i += 1) {
     const x = pos.getX(i);
@@ -195,10 +201,13 @@ export function analyzeSurface(geometry, lightDirection) {
         slope: computeSlope({ x: nx, y: ny, z: nz }),
         height: y,
         heightNorm: 0,
+        mapU: 0,
+        mapV: 0,
         lightFacing: clamp01(dot({ x: nx, y: ny, z: nz }, lightDirection) * 0.5 + 0.5),
         density: 0,
         mass: 0,
         health: 0.5,
+        wetPaint: 0,
         age: 0,
         dormancy: 0,
         speciesId: 0,
@@ -206,6 +215,10 @@ export function analyzeSurface(geometry, lightDirection) {
       });
       minHeight = Math.min(minHeight, y);
       maxHeight = Math.max(maxHeight, y);
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minZ = Math.min(minZ, z);
+      maxZ = Math.max(maxZ, z);
     }
     rawToCell[i] = idx;
     rawTriples.push(idx);
@@ -230,9 +243,14 @@ export function analyzeSurface(geometry, lightDirection) {
   }
 
   const heightRange = Math.max(0.0001, maxHeight - minHeight);
+  const xRange = Math.max(0.0001, maxX - minX);
+  const zRange = Math.max(0.0001, maxZ - minZ);
   for (let i = 0; i < cells.length; i += 1) {
     const cell = cells[i];
     cell.heightNorm = (cell.height - minHeight) / heightRange;
+    cell.mapU = (cell.x - minX) / xRange;
+    cell.mapV = (cell.z - minZ) / zRange;
+
     const seed = pseudoSeed(cell.x, cell.y, cell.z);
     const blobs = patchNoise(cell.x, cell.y, cell.z);
     const basalSuitability = clamp01(0.54 - Math.abs(cell.slope - 0.62));
@@ -241,12 +259,19 @@ export function analyzeSurface(geometry, lightDirection) {
     cell.density = clamp01(basalSuitability * 0.03 + patchSeed * 0.08 + rareSeed);
     cell.mass = cell.density;
     cell.health = clamp01(0.42 + basalSuitability * 0.19 + patchSeed * 0.13);
+    cell.wetPaint = cell.density > 0.06 ? 0.12 : 0;
     cell.age = clamp01(cell.density * 3.2);
     cell.speciesId = chooseInitialSpecies(cell, seed, blobs);
     cell.neighbors = Array.from(cell.neighbors);
   }
 
-  return { cells, rawToCell, rawCount, triangles: new Uint32Array(rawTriples) };
+  return {
+    cells,
+    rawToCell,
+    rawCount,
+    triangles: new Uint32Array(rawTriples),
+    bounds: { minX, maxX, minZ, maxZ },
+  };
 }
 
 export class GrowthSimulation {
@@ -254,6 +279,7 @@ export class GrowthSimulation {
     this.cells = surfaceData.cells;
     this.rawToCell = surfaceData.rawToCell;
     this.rawCount = surfaceData.rawCount;
+    this.bounds = surfaceData.bounds;
     this.environment = { ...defaultEnvironment, ...options.environment };
     this.lightDirection = options.lightDirection || { x: 0.22, y: 0.85, z: 0.47 };
     this.speciesCatalog = options.speciesCatalog || mossSpeciesCatalog;
@@ -264,6 +290,13 @@ export class GrowthSimulation {
     this.pendingDensity = new Float32Array(this.rawCount);
     this.pendingSpecies = new Float32Array(this.rawCount);
     this.pendingMass = new Float32Array(this.rawCount);
+    this.coverageMapSize = options.coverageMapSize || 160;
+    this.coverageMap = new Float32Array(this.coverageMapSize * this.coverageMapSize * 4);
+    this.coverageScratch = new Float32Array(this.coverageMap.length);
+    this.coverageCounts = new Uint16Array(this.coverageMapSize * this.coverageMapSize);
+    this.speciesBin0 = new Float32Array(this.coverageMapSize * this.coverageMapSize);
+    this.speciesBin1 = new Float32Array(this.coverageMapSize * this.coverageMapSize);
+    this.speciesBin2 = new Float32Array(this.coverageMapSize * this.coverageMapSize);
     this.spatialIndex = buildSpatialIndex(this.cells, 0.33);
     this.speciesWeightScratch = new Float32Array(this.speciesCount);
     this.dirty = true;
@@ -292,6 +325,10 @@ export class GrowthSimulation {
 
   getSpeciesCatalog() {
     return this.speciesCatalog;
+  }
+
+  getBounds() {
+    return this.bounds;
   }
 
   updateFrame() {
@@ -359,6 +396,7 @@ export class GrowthSimulation {
 
       cell.health = clamp01(next.health + (occupiedRatio - 0.35) * 0.03 - cell.dormancy * 0.035);
       cell.mass = clamp01(cell.mass * 0.72 + cell.density * 0.28 + Math.max(0, localMass - cell.density) * 0.14);
+      cell.wetPaint = clamp01(cell.wetPaint * (0.94 - cell.density * 0.04) + Math.max(0, cell.density - 0.38) * 0.02);
 
       let dominantSpecies = cell.speciesId;
       let dominantWeight = 0;
@@ -426,6 +464,7 @@ export class GrowthSimulation {
               cell.density = clamp01(cell.density - influence * 0.42);
               cell.mass = clamp01(cell.mass - influence * 0.35);
               cell.health = clamp01(cell.health - influence * 0.24);
+              cell.wetPaint = clamp01(cell.wetPaint - influence * 0.65);
               cell.dormancy = clamp01(cell.dormancy + influence * 0.08);
               if (cell.density < 0.02) cell.speciesId = 0;
             } else {
@@ -435,6 +474,7 @@ export class GrowthSimulation {
               cell.density = clamp01(cell.density + influence * 0.32);
               cell.mass = clamp01(cell.mass + influence * 0.4);
               cell.health = clamp01(Math.max(cell.health, 0.42) + influence * 0.16);
+              cell.wetPaint = clamp01(Math.max(cell.wetPaint, 0.35) + influence * 0.72);
               cell.age = clamp01(cell.age + influence * 0.09);
               cell.dormancy = clamp01(cell.dormancy - influence * 0.14);
             }
@@ -473,6 +513,81 @@ export class GrowthSimulation {
       this.pendingMass[i] = this.cells[this.rawToCell[i]].mass;
     }
     return this.pendingMass;
+  }
+
+  fillCoverageMap() {
+    const size = this.coverageMapSize;
+    const map = this.coverageMap;
+    const scratch = this.coverageScratch;
+    const counts = this.coverageCounts;
+    const bin0 = this.speciesBin0;
+    const bin1 = this.speciesBin1;
+    const bin2 = this.speciesBin2;
+    map.fill(0);
+    counts.fill(0);
+    bin0.fill(0);
+    bin1.fill(0);
+    bin2.fill(0);
+
+    for (let i = 0; i < this.cells.length; i += 1) {
+      const cell = this.cells[i];
+      const tx = Math.max(0, Math.min(size - 1, Math.floor(cell.mapU * (size - 1))));
+      const ty = Math.max(0, Math.min(size - 1, Math.floor(cell.mapV * (size - 1))));
+      const p = ty * size + tx;
+      const offset = p * 4;
+      map[offset] += cell.density;
+      map[offset + 1] += cell.mass;
+      map[offset + 2] += clamp01(cell.health * 0.58 + cell.wetPaint * 0.42);
+      if (cell.speciesId === 0) bin0[p] += cell.mass + cell.wetPaint * 0.6;
+      else if (cell.speciesId === 1) bin1[p] += cell.mass + cell.wetPaint * 0.6;
+      else bin2[p] += cell.mass + cell.wetPaint * 0.6;
+      counts[p] += 1;
+    }
+
+    for (let i = 0; i < counts.length; i += 1) {
+      const count = Math.max(1, counts[i]);
+      const offset = i * 4;
+      map[offset] /= count;
+      map[offset + 1] /= count;
+      map[offset + 2] /= count;
+      const s0 = bin0[i];
+      const s1 = bin1[i];
+      const s2 = bin2[i];
+      const dominant = s2 > s1 ? (s2 > s0 ? 2 : 0) : (s1 > s0 ? 1 : 0);
+      map[offset + 3] = dominant / Math.max(1, this.speciesCount - 1);
+    }
+
+    // Lightweight blur to merge nearby colonies into smoother moss masses.
+    for (let y = 0; y < size; y += 1) {
+      for (let x = 0; x < size; x += 1) {
+        let d = 0;
+        let m = 0;
+        let h = 0;
+        let s = 0;
+        let w = 0;
+        for (let oy = -1; oy <= 1; oy += 1) {
+          const py = Math.max(0, Math.min(size - 1, y + oy));
+          for (let ox = -1; ox <= 1; ox += 1) {
+            const px = Math.max(0, Math.min(size - 1, x + ox));
+            const weight = ox === 0 && oy === 0 ? 0.28 : 0.09;
+            const off = (py * size + px) * 4;
+            d += map[off] * weight;
+            m += map[off + 1] * weight;
+            h += map[off + 2] * weight;
+            s += map[off + 3] * weight;
+            w += weight;
+          }
+        }
+        const out = (y * size + x) * 4;
+        scratch[out] = d / w;
+        scratch[out + 1] = m / w;
+        scratch[out + 2] = h / w;
+        scratch[out + 3] = s / w;
+      }
+    }
+
+    map.set(scratch);
+    return { data: map, width: size, height: size };
   }
 
   getStats() {

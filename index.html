@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en" data-theme="steel-night" data-ds-theme-storage="koke-theme" data-ds-theme-default="steel-night">
 <head>
+  <link rel="icon" href="data:,">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>KOKE | Moss Growth Simulation</title>
@@ -9,233 +10,543 @@
   <link rel="stylesheet" href="./src/styles.css">
 </head>
 <body>
-  <header class="ds-topbar">
-    <div class="ds-topbar-inner koke-topbar-inner">
-      <div class="koke-brand">
-        <h1 class="koke-brand__title">KOKE Moss Studio</h1>
-        <p class="koke-brand__eyebrow">Realtime growth sandbox</p>
-      </div>
-      <div class="ds-toolbar ds-toolbar-compact koke-topbar-actions">
-        <button id="simStartBtn" class="ds-btn ds-btn-primary" type="button" title="Start simulation">
-          <i class="koke-btn-icon with-label iconoir-play-solid" aria-hidden="true"></i><span>Start</span>
-        </button>
-        <button id="simPauseBtn" class="ds-btn" type="button" title="Pause simulation">
-          <i class="koke-btn-icon with-label iconoir-substract" aria-hidden="true"></i><span>Pause</span>
-        </button>
-      </div>
-      <div class="koke-topbar-spacer" aria-hidden="true"></div>
-    </div>
-  </header>
-
-  <main class="ds-shell koke-shell">
-    <div class="koke-layout">
-      <aside class="ds-card ds-panel-scroll ds-stack koke-left-panel" aria-label="Simulation controls">
-        <section class="ds-stack ds-stack-content-tight">
-          <div class="ds-card-head">
-            <h2>Growth Controls</h2>
-          </div>
-          <div class="ds-field">
-            <div class="ds-field-row">
-              <label class="ds-label" for="moistureInput">Moisture</label>
-              <div class="ds-field-control"><input id="moistureInput" type="range" min="0" max="1" step="0.01"></div>
-              <div class="ds-field-actions"><output id="moistureValue"></output></div>
-            </div>
-            <div class="ds-field-row">
-              <label class="ds-label" for="slopeBiasInput">Slope Bias</label>
-              <div class="ds-field-control"><input id="slopeBiasInput" type="range" min="0" max="1" step="0.01"></div>
-              <div class="ds-field-actions"><output id="slopeBiasValue"></output></div>
-            </div>
-            <div class="ds-field-row">
-              <label class="ds-label" for="growthRateInput">Growth Rate</label>
-              <div class="ds-field-control"><input id="growthRateInput" type="range" min="0" max="1" step="0.01"></div>
-              <div class="ds-field-actions"><output id="growthRateValue"></output></div>
-            </div>
-            <div class="ds-field-row">
-              <label class="ds-label" for="decayRateInput">Decay Rate</label>
-              <div class="ds-field-control"><input id="decayRateInput" type="range" min="0" max="1" step="0.01"></div>
-              <div class="ds-field-actions"><output id="decayRateValue"></output></div>
-            </div>
-            <div class="ds-field-row">
-              <label class="ds-label" for="diffusionRateInput">Diffusion</label>
-              <div class="ds-field-control"><input id="diffusionRateInput" type="range" min="0" max="1" step="0.01"></div>
-              <div class="ds-field-actions"><output id="diffusionRateValue"></output></div>
-            </div>
-            <div class="ds-field-row">
-              <label class="ds-label" for="colonizationInput">Colonization</label>
-              <div class="ds-field-control"><input id="colonizationInput" type="range" min="0" max="1" step="0.01"></div>
-              <div class="ds-field-actions"><output id="colonizationValue"></output></div>
-            </div>
-            <div class="ds-field-row">
-              <label class="ds-label" for="gravityCreepInput">Gravity Creep</label>
-              <div class="ds-field-control"><input id="gravityCreepInput" type="range" min="0" max="1" step="0.01"></div>
-              <div class="ds-field-actions"><output id="gravityCreepValue"></output></div>
-            </div>
-          </div>
-        </section>
-
-        <section class="ds-stack ds-stack-content-tight">
-          <div class="ds-card-head">
-            <h2>Paint Tools</h2>
-          </div>
-          <div class="ds-toolbar ds-toolbar-compact">
-            <button id="paintToggleBtn" class="ds-btn" type="button" aria-pressed="false">
-              <i class="koke-btn-icon with-label iconoir-brush" aria-hidden="true"></i><span>Paint</span>
-            </button>
-          </div>
-          <div class="ds-field">
-            <div class="ds-field-row ds-field-row-compact">
-              <label class="ds-label" for="paintSpeciesSelect">Species</label>
-              <div class="ds-field-control">
-                <select id="paintSpeciesSelect" class="ds-select" aria-label="Moss species"></select>
-              </div>
-            </div>
-            <div class="ds-field-row">
-              <label class="ds-label" for="paintRadiusInput">Brush Radius</label>
-              <div class="ds-field-control"><input id="paintRadiusInput" type="range" min="0.08" max="1.2" step="0.01"></div>
-              <div class="ds-field-actions"><output id="paintRadiusValue"></output></div>
-            </div>
-            <div class="ds-field-row">
-              <label class="ds-label" for="paintStrengthInput">Brush Strength</label>
-              <div class="ds-field-control"><input id="paintStrengthInput" type="range" min="0.05" max="1" step="0.01"></div>
-              <div class="ds-field-actions"><output id="paintStrengthValue"></output></div>
-            </div>
-            <div class="ds-field-row">
-              <label class="ds-label" for="paintEraseInput">Erase</label>
-              <div class="ds-field-actions">
-                <label class="ds-switch">
-                  <input id="paintEraseInput" type="checkbox">
-                  <span class="ds-switch-track"></span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section class="ds-stack ds-stack-content-tight">
-          <div class="ds-card-head"><h2>Light + Performance</h2></div>
-          <div class="ds-field">
-            <div class="ds-field-row">
-              <label class="ds-label" for="lightAzimuthInput">Light Azimuth</label>
-              <div class="ds-field-control"><input id="lightAzimuthInput" type="range" min="-180" max="180" step="1"></div>
-              <div class="ds-field-actions"><output id="lightAzimuthValue"></output></div>
-            </div>
-            <div class="ds-field-row">
-              <label class="ds-label" for="lightElevationInput">Light Elevation</label>
-              <div class="ds-field-control"><input id="lightElevationInput" type="range" min="5" max="89" step="1"></div>
-              <div class="ds-field-actions"><output id="lightElevationValue"></output></div>
-            </div>
-            <div class="ds-field-row">
-              <label class="ds-label" for="tickEveryFramesInput">Tick Interval</label>
-              <div class="ds-field-control"><input id="tickEveryFramesInput" type="range" min="2" max="16" step="1"></div>
-              <div class="ds-field-actions"><output id="tickEveryFramesValue"></output></div>
-            </div>
-            <div class="ds-field-row">
-              <label class="ds-label" for="batchRatioInput">Batch Ratio</label>
-              <div class="ds-field-control"><input id="batchRatioInput" type="range" min="0.08" max="1" step="0.02"></div>
-              <div class="ds-field-actions"><output id="batchRatioValue"></output></div>
-            </div>
-            <div class="ds-field-row">
-              <label class="ds-label" for="wireframeInput">Wireframe</label>
-              <div class="ds-field-actions">
-                <label class="ds-switch">
-                  <input id="wireframeInput" type="checkbox">
-                  <span class="ds-switch-track"></span>
-                </label>
-              </div>
-            </div>
-          </div>
-        </section>
-      </aside>
-
-      <section class="ds-card koke-viewport-card">
-        <div id="viewportWrap" class="koke-viewport-wrap">
-          <canvas id="viewport" aria-label="Moss simulation viewport"></canvas>
-          <div id="brushPreview" class="koke-brush-preview" aria-hidden="true"></div>
-        </div>
-      </section>
-
-      <aside class="ds-card koke-right-panel" aria-label="Utility panels">
-        <nav class="koke-utility-rail" aria-label="Utility rail">
-          <button class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" data-utility-tab="view" type="button" title="View controls"><i class="koke-btn-icon iconoir-view-grid" aria-hidden="true"></i></button>
-          <button class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" data-utility-tab="snapshot" type="button" title="Snapshots"><i class="koke-btn-icon iconoir-camera" aria-hidden="true"></i></button>
-          <button class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" data-utility-tab="diagnostics" type="button" title="Diagnostics"><i class="koke-btn-icon iconoir-graph-up" aria-hidden="true"></i></button>
-          <button class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" data-utility-tab="export" type="button" title="Export"><i class="koke-btn-icon iconoir-download" aria-hidden="true"></i></button>
-          <button class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" data-utility-tab="settings" type="button" title="Settings"><i class="koke-btn-icon iconoir-settings" aria-hidden="true"></i></button>
-        </nav>
-        <div class="koke-utility-body ds-panel-scroll">
-          <section id="utilityPanelView" class="koke-utility-panel ds-stack ds-stack-content-tight" data-utility-panel="view">
-            <div class="gizmo-shell">
-              <div class="gizmo-grid">
-                <button id="widgetFrontBtn" class="ds-btn ds-btn-icon" type="button" title="Front view"><i class="koke-btn-icon iconoir-nav-arrow-up" aria-hidden="true"></i></button>
-                <button id="widgetTopBtn" class="ds-btn ds-btn-icon" type="button" title="Top view"><i class="koke-btn-icon iconoir-align-bottom-box" aria-hidden="true"></i></button>
-                <span class="koke-pad-cell"></span>
-                <button id="widgetLeftBtn" class="ds-btn ds-btn-icon" type="button" title="Left view"><i class="koke-btn-icon iconoir-nav-arrow-left" aria-hidden="true"></i></button>
-                <span class="koke-pad-cell"></span>
-                <span class="koke-pad-cell"></span>
-                <span class="koke-pad-cell"></span>
-                <button id="widgetIsoBtn" class="ds-btn ds-btn-icon" type="button" title="Isometric view"><i class="koke-btn-icon iconoir-view-360" aria-hidden="true"></i></button>
-                <span class="koke-pad-cell"></span>
-              </div>
-              <div class="gizmo-actions">
-                <button id="widgetResetBtn" class="ds-btn ds-btn-icon" type="button" title="Reset to isometric"><i class="koke-btn-icon iconoir-refresh-double" aria-hidden="true"></i></button>
-              </div>
-            </div>
-          </section>
-
-          <section id="utilityPanelSnapshot" class="koke-utility-panel ds-stack ds-stack-content-tight" data-utility-panel="snapshot" hidden>
-            <article class="ds-snapshot-card">
-              <div class="ds-snapshot-thumb">
-                <img id="snapshotThumb" alt="Latest viewport snapshot">
-              </div>
-              <div class="ds-snapshot-meta">
-                <strong id="snapshotTitle">No snapshot yet</strong>
-                <span id="snapshotMeta">Use View Snapshot to capture current view.</span>
-              </div>
-            </article>
-            <div class="ds-toolbar">
-              <button id="snapshotCaptureBtn" class="ds-btn ds-btn-primary" type="button"><i class="koke-btn-icon with-label iconoir-camera" aria-hidden="true"></i><span>Capture</span></button>
-            </div>
-          </section>
-
-          <section id="utilityPanelDiagnostics" class="koke-utility-panel ds-stack ds-stack-content-tight" data-utility-panel="diagnostics" hidden>
-            <dl class="koke-metrics">
-              <div><dt class="koke-metrics__label">FPS</dt><dd id="metricFps" class="koke-metrics__value">-</dd></div>
-              <div><dt class="koke-metrics__label">Frame ms</dt><dd id="metricFrameMs" class="koke-metrics__value">-</dd></div>
-              <div><dt class="koke-metrics__label">Sim ticks/s</dt><dd id="metricTicks" class="koke-metrics__value">-</dd></div>
-              <div><dt class="koke-metrics__label">Tick ms</dt><dd id="metricTickMs" class="koke-metrics__value">-</dd></div>
-              <div><dt class="koke-metrics__label">Cells active</dt><dd id="metricActiveCells" class="koke-metrics__value">-</dd></div>
-              <div><dt class="koke-metrics__label">Avg density</dt><dd id="metricDensity" class="koke-metrics__value">-</dd></div>
-              <div><dt class="koke-metrics__label">Clumps</dt><dd id="metricClumps" class="koke-metrics__value">-</dd></div>
-              <div><dt class="koke-metrics__label">Batch size</dt><dd id="metricBatch" class="koke-metrics__value">-</dd></div>
-              <div><dt class="koke-metrics__label">Paint ops</dt><dd id="metricPaintOps" class="koke-metrics__value">-</dd></div>
-              <div><dt class="koke-metrics__label">Last stroke</dt><dd id="metricLastPaint" class="koke-metrics__value">-</dd></div>
-            </dl>
-            <div id="debugLog" class="koke-debug__log"></div>
-          </section>
-
-          <section id="utilityPanelExport" class="koke-utility-panel ds-stack ds-stack-content-tight" data-utility-panel="export" hidden>
-            <div class="ds-toolbar">
-              <button id="exportSnapshotBtn" class="ds-btn ds-btn-primary" type="button"><i class="koke-btn-icon with-label iconoir-download" aria-hidden="true"></i><span>PNG</span></button>
-              <button id="exportReportBtn" class="ds-btn" type="button"><i class="koke-btn-icon with-label iconoir-notes" aria-hidden="true"></i><span>Report</span></button>
-              <button id="copyDebugBtn" class="ds-btn" type="button"><i class="koke-btn-icon with-label iconoir-copy" aria-hidden="true"></i><span>Copy</span></button>
-            </div>
-          </section>
-
-          <section id="utilityPanelSettings" class="koke-utility-panel ds-stack ds-stack-content-tight" data-utility-panel="settings" hidden>
-            <div class="ds-field">
-              <div class="ds-field-row ds-field-row-compact">
-                <label class="ds-label" for="themeSelect">Theme</label>
+<main class="koke-studio" id="studio">
+<aside class="koke-controls" aria-label="Studio controls">
+<header class="koke-panel-header">
+<h1>KOKE <span>Moss Studio</span>
+</h1>
+<button id="controlsToggleBtn" class="ds-btn ds-btn-sm koke-icon-button" type="button" aria-label="Toggle controls" title="Toggle controls">
+<i class="iconoir-menu" aria-hidden="true">
+</i>
+<span>Toggle controls</span>
+</button>
+</header>
+<nav class="koke-utility-rail" role="tablist" aria-label="Studio tools" aria-orientation="vertical">
+<button id="tab-scene" class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" type="button" role="tab" data-utility-tab="scene" aria-controls="panel-scene" aria-selected="false" tabindex="-1" title="Scene" aria-label="Scene">
+<i class="iconoir-sun-light" aria-hidden="true">
+</i>
+</button>
+<button id="tab-moss" class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" type="button" role="tab" data-utility-tab="moss" aria-controls="panel-moss" aria-selected="false" tabindex="-1" title="Moss" aria-label="Moss">
+<i class="iconoir-flask" aria-hidden="true">
+</i>
+</button>
+<button id="tab-render" class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" type="button" role="tab" data-utility-tab="render" aria-controls="panel-render" aria-selected="false" tabindex="-1" title="Render" aria-label="Render">
+<i class="iconoir-view-grid" aria-hidden="true">
+</i>
+</button>
+<button id="tab-export" class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" type="button" role="tab" data-utility-tab="export" aria-controls="panel-export" aria-selected="false" tabindex="-1" title="Export" aria-label="Export">
+<i class="iconoir-download" aria-hidden="true">
+</i>
+</button>
+<button id="tab-settings" class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" type="button" role="tab" data-utility-tab="settings" aria-controls="panel-settings" aria-selected="false" tabindex="-1" title="Settings" aria-label="Settings">
+<i class="iconoir-settings" aria-hidden="true">
+</i>
+</button>
+</nav>
+<div id="controlBody" class="koke-panel-body">
+<section id="panel-scene" class="koke-utility-panel" role="tabpanel" aria-labelledby="tab-scene" tabindex="0" data-utility-panel="scene" hidden>
+<h2>Scene</h2>
+<section class="koke-section">
+<h3>Object</h3>
+<div class="ds-field">
+<div class="ds-field-row ds-field-row-compact">
+<label class="ds-label" for="surfaceInput">Surface</label>
+<select id="surfaceInput" class="ds-select">
+<option value="rock">Rock</option>
+<option value="sphere">Sphere</option>
+<option value="icosahedron">Icosahedron</option>
+</select>
+</div>
+<div class="ds-field-row ds-field-row-compact">
+<label class="ds-label" for="surfaceDetailInput">Surface detail</label>
+<select id="surfaceDetailInput" class="ds-select">
+<option value="high">High</option>
+<option value="low">Low</option>
+</select>
+</div>
+</div>
+</section>
+<section class="koke-section">
+<h3>Environment</h3>
+<div class="ds-field">
+<div class="ds-field-row">
+                  <label class="ds-label" for="moistureInput">Moisture</label>
+                  <div class="ds-field-control">
+<input id="moistureInput" type="range" min="0" max="1" step="0.01">
+</div>
+                  <div class="ds-field-actions">
+<output id="moistureValue">
+</output>
+</div>
+                </div>
+</div>
+</section>
+<section class="koke-section">
+<h3>Lighting</h3>
+<div class="ds-field">
+<div class="ds-field-row">
+                <label class="ds-label" for="lightAzimuthInput">Light Azimuth</label>
                 <div class="ds-field-control">
-                  <select id="themeSelect" class="ds-select" data-ds-theme-select aria-label="Theme"></select>
+<input id="lightAzimuthInput" type="range" min="-180" max="180" step="1">
+</div>
+                <div class="ds-field-actions">
+<output id="lightAzimuthValue">
+</output>
+</div>
+              </div>
+<div class="ds-field-row">
+                <label class="ds-label" for="lightElevationInput">Light Elevation</label>
+                <div class="ds-field-control">
+<input id="lightElevationInput" type="range" min="5" max="89" step="1">
+</div>
+                <div class="ds-field-actions">
+<output id="lightElevationValue">
+</output>
+</div>
+              </div>
+</div>
+</section>
+</section>
+<section id="panel-moss" class="koke-utility-panel" role="tabpanel" aria-labelledby="tab-moss" tabindex="0" data-utility-panel="moss" hidden>
+<h2>Moss</h2>
+<section class="koke-section">
+<h3>Initial state</h3>
+<div class="ds-toolbar">
+<button id="maturePresetBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Mature" title="Mature">
+<span>Mature</span>
+</button>
+<button id="seedPresetBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Seed" title="Seed">
+<span>Seed</span>
+</button>
+<button id="barePresetBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Bare" title="Bare">
+<span>Bare</span>
+</button>
+</div>
+</section>
+<section class="koke-section">
+<h3>Growth</h3>
+<div class="ds-field">
+<div class="ds-field-row">
+                  <label class="ds-label" for="slopeBiasInput">Slope Bias</label>
+                  <div class="ds-field-control">
+<input id="slopeBiasInput" type="range" min="0" max="1" step="0.01">
+</div>
+                  <div class="ds-field-actions">
+<output id="slopeBiasValue">
+</output>
+</div>
+                </div>
+<div class="ds-field-row">
+                  <label class="ds-label" for="growthRateInput">Growth Rate</label>
+                  <div class="ds-field-control">
+<input id="growthRateInput" type="range" min="0" max="1" step="0.01">
+</div>
+                  <div class="ds-field-actions">
+<output id="growthRateValue">
+</output>
+</div>
+                </div>
+<div class="ds-field-row">
+                  <label class="ds-label" for="decayRateInput">Decay Rate</label>
+                  <div class="ds-field-control">
+<input id="decayRateInput" type="range" min="0" max="1" step="0.01">
+</div>
+                  <div class="ds-field-actions">
+<output id="decayRateValue">
+</output>
+</div>
+                </div>
+<div class="ds-field-row">
+                  <label class="ds-label" for="diffusionRateInput">Diffusion</label>
+                  <div class="ds-field-control">
+<input id="diffusionRateInput" type="range" min="0" max="1" step="0.01">
+</div>
+                  <div class="ds-field-actions">
+<output id="diffusionRateValue">
+</output>
+</div>
+                </div>
+<div class="ds-field-row">
+                  <label class="ds-label" for="colonizationInput">Colonization</label>
+                  <div class="ds-field-control">
+<input id="colonizationInput" type="range" min="0" max="1" step="0.01">
+</div>
+                  <div class="ds-field-actions">
+<output id="colonizationValue">
+</output>
+</div>
+                </div>
+<div class="ds-field-row">
+                  <label class="ds-label" for="gravityCreepInput">Gravity Creep</label>
+                  <div class="ds-field-control">
+<input id="gravityCreepInput" type="range" min="0" max="1" step="0.01">
+</div>
+                  <div class="ds-field-actions">
+<output id="gravityCreepValue">
+</output>
+</div>
+                </div>
+<div class="ds-field-row">
+                  <label class="ds-label" for="cycleSpeedInput">Aging</label>
+                  <div class="ds-field-control">
+<input id="cycleSpeedInput" type="range" min="0" max="1" step="0.01">
+</div>
+                  <div class="ds-field-actions">
+<output id="cycleSpeedValue">
+</output>
+</div>
+                </div>
+</div>
+</section>
+<section class="koke-section">
+<h3>Paint</h3>
+<div class="ds-toolbar">
+<button id="paintToggleBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Paint" title="Paint">
+<i class="iconoir-brush" aria-hidden="true">
+</i>
+<span>Paint</span>
+</button>
+</div>
+<div class="ds-field">
+<div class="ds-field-row ds-field-row-compact">
+                  <label class="ds-label" for="paintSpeciesSelect">Species</label>
+                  <div class="ds-field-control">
+                    <select id="paintSpeciesSelect" class="ds-select" aria-label="Moss species">
+</select>
+                  </div>
+                </div>
+<div class="ds-field-row">
+                  <label class="ds-label" for="paintRadiusInput">Brush Radius</label>
+                  <div class="ds-field-control">
+<input id="paintRadiusInput" type="range" min="0.08" max="1.2" step="0.01">
+</div>
+                  <div class="ds-field-actions">
+<output id="paintRadiusValue">
+</output>
+</div>
+                </div>
+<div class="ds-field-row">
+                  <label class="ds-label" for="paintStrengthInput">Brush Strength</label>
+                  <div class="ds-field-control">
+<input id="paintStrengthInput" type="range" min="0.05" max="1" step="0.01">
+</div>
+                  <div class="ds-field-actions">
+<output id="paintStrengthValue">
+</output>
+</div>
+                </div>
+<div class="ds-field-row">
+                  <label class="ds-label" for="paintEraseInput">Erase</label>
+                  <div class="ds-field-actions">
+                    <label class="ds-switch">
+                      <input id="paintEraseInput" type="checkbox">
+                      <span class="ds-switch-track">
+</span>
+                    </label>
+                  </div>
+                </div>
+</div>
+</section>
+</section>
+<section id="panel-render" class="koke-utility-panel" role="tabpanel" aria-labelledby="tab-render" tabindex="0" data-utility-panel="render" hidden>
+<h2>Render</h2>
+<section class="koke-section">
+<h3>Camera</h3>
+<div class="koke-camera-buttons">
+<button id="widgetIsoBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Isometric" title="Isometric">
+<span>Isometric</span>
+</button>
+<button id="widgetFrontBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Front" title="Front">
+<span>Front</span>
+</button>
+<button id="widgetTopBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Top" title="Top">
+<span>Top</span>
+</button>
+<button id="widgetLeftBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Left" title="Left">
+<span>Left</span>
+</button>
+<button id="macroViewBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Macro" title="Macro">
+<span>Macro</span>
+</button>
+<button id="widgetResetBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Reset view" title="Reset view">
+<span>Reset view</span>
+</button>
+</div>
+</section>
+<section class="koke-section">
+<h3>Appearance</h3>
+<div class="ds-field">
+<div class="ds-field-row ds-field-row-compact">
+<label class="ds-label" for="representationInput">Geometry</label>
+<select id="representationInput" class="ds-select">
+<option value="surface">Surface mat</option>
+<option value="triangles">Flat triangles</option>
+<option value="diamonds">Flat diamonds</option>
+<option value="cards">Crossed cards</option>
+<option value="clumps">Low-poly clumps</option>
+<option value="shoots" selected>Detailed shoots</option>
+</select>
+</div>
+<div class="ds-field-row ds-field-row-compact">
+<label class="ds-label" for="detailInput">Detail</label>
+<select id="detailInput" class="ds-select">
+<option value="high">High</option>
+<option value="low">Low</option>
+</select>
+</div>
+<div class="ds-field-row"><label class="ds-label" for="mossDensityInput">Density</label><div class="ds-field-control"><input id="mossDensityInput" type="range" min="0.05" max="1" step="0.05"></div><div class="ds-field-actions"><output id="mossDensityValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="mossScaleInput">Size</label><div class="ds-field-control"><input id="mossScaleInput" type="range" min="0.25" max="2" step="0.05"></div><div class="ds-field-actions"><output id="mossScaleValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="mossAspectInput">Width</label><div class="ds-field-control"><input id="mossAspectInput" type="range" min="0.25" max="2" step="0.05"></div><div class="ds-field-actions"><output id="mossAspectValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="mossOrientationInput">Rotation</label><div class="ds-field-control"><input id="mossOrientationInput" type="range" min="0" max="1" step="0.05"></div><div class="ds-field-actions"><output id="mossOrientationValue"></output></div></div>
+<div class="ds-field-row">
+<label for="softFocusInput" class="ds-label">Soft focus</label>
+<label class="ds-switch">
+<input id="softFocusInput" type="checkbox">
+<span class="ds-switch-track">
+</span>
+</label>
+</div>
+<div class="ds-field-row">
+<label for="dewInput" class="ds-label">Dew</label>
+<label class="ds-switch">
+<input id="dewInput" type="checkbox">
+<span class="ds-switch-track">
+</span>
+</label>
+</div>
+<div class="ds-field-row">
+                <label class="ds-label" for="wireframeInput">Wireframe</label>
+                <div class="ds-field-actions">
+                  <label class="ds-switch">
+                    <input id="wireframeInput" type="checkbox">
+                    <span class="ds-switch-track">
+</span>
+                  </label>
                 </div>
               </div>
-            </div>
-          </section>
-        </div>
-      </aside>
-    </div>
-  </main>
-
+</div>
+</section>
+<section class="koke-section">
+<h3>Color mapping</h3>
+<div class="ds-field">
+<div class="ds-field-row"><label class="ds-label" for="mossRootColorInput">Root</label><input id="mossRootColorInput" type="color" value="#24451f"></div>
+<div class="ds-field-row"><label class="ds-label" for="mossTipColorInput">Tip</label><input id="mossTipColorInput" type="color" value="#a5c950"></div>
+<div class="ds-field-row"><label class="ds-label" for="mossStressColorInput">Stressed</label><input id="mossStressColorInput" type="color" value="#4b2814"></div>
+<div class="ds-field-row ds-field-row-compact"><label class="ds-label" for="mossColorSourceInput">Source</label><select id="mossColorSourceInput" class="ds-select"><option value="uniform">Uniform</option><option value="species">Species</option><option value="health">Health</option><option value="thickness">Thickness</option><option value="moisture">Moisture</option><option value="height">Height</option></select></div>
+<div class="ds-field-row"><label class="ds-label" for="mossColorRangeInput">Range</label><div class="ds-field-control"><input id="mossColorRangeInput" type="range" min="0" max="2" step="0.05"></div><div class="ds-field-actions"><output id="mossColorRangeValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="mossTextureScaleInput">Texture scale</label><div class="ds-field-control"><input id="mossTextureScaleInput" type="range" min="2" max="60" step="1"></div><div class="ds-field-actions"><output id="mossTextureScaleValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="mossTextureStrengthInput">Texture strength</label><div class="ds-field-control"><input id="mossTextureStrengthInput" type="range" min="0" max="1" step="0.05"></div><div class="ds-field-actions"><output id="mossTextureStrengthValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="mossColorInvertInput">Invert</label><div class="ds-field-actions"><label class="ds-switch"><input id="mossColorInvertInput" type="checkbox"><span class="ds-switch-track"></span></label></div></div>
+</div>
+</section>
+</section>
+<section id="panel-export" class="koke-utility-panel" role="tabpanel" aria-labelledby="tab-export" tabindex="0" data-utility-panel="export" hidden>
+<h2>Export</h2>
+<section class="koke-section">
+<h3>Latest capture</h3>
+<article class="ds-snapshot-card">
+<div class="ds-snapshot-thumb">
+<img id="snapshotThumb" alt="Latest viewport snapshot">
+</div>
+<div class="ds-snapshot-meta">
+<strong id="snapshotTitle">No snapshot yet</strong>
+<span id="snapshotMeta">Capture a view using the transport bar.</span>
+</div>
+</article>
+</section>
+<section class="koke-section">
+<h3>Download</h3>
+<div class="ds-toolbar">
+<button id="exportSnapshotBtn" class="ds-btn ds-btn-sm " type="button" aria-label="PNG" title="PNG">
+<i class="iconoir-download" aria-hidden="true">
+</i>
+<span>PNG</span>
+</button>
+<button id="exportReportBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Report" title="Report">
+<i class="iconoir-notes" aria-hidden="true">
+</i>
+<span>Report</span>
+</button>
+</div>
+</section>
+</section>
+<section id="panel-settings" class="koke-utility-panel" role="tabpanel" aria-labelledby="tab-settings" tabindex="0" data-utility-panel="settings" hidden>
+<h2>Settings</h2>
+<section class="koke-section">
+<h3>Appearance</h3>
+<div class="ds-field">
+<div class="ds-field-row ds-field-row-compact">
+                <label class="ds-label" for="themeSelect">Theme</label>
+                <div class="ds-field-control">
+                  <select id="themeSelect" class="ds-select" data-ds-theme-select aria-label="Theme">
+</select>
+                </div>
+              </div>
+</div>
+</section>
+<section class="koke-section">
+<h3>Panels</h3>
+<div class="ds-field">
+<div class="ds-field-row">
+<label for="controlsVisibleInput" class="ds-label">Controls</label>
+<label class="ds-switch">
+<input id="controlsVisibleInput" type="checkbox" checked>
+<span class="ds-switch-track">
+</span>
+</label>
+</div>
+<div class="ds-field-row">
+<label for="observationVisibleInput" class="ds-label">Observation</label>
+<label class="ds-switch">
+<input id="observationVisibleInput" type="checkbox" checked>
+<span class="ds-switch-track">
+</span>
+</label>
+</div>
+<div class="ds-field-row">
+<label for="diagnosticsVisibleInput" class="ds-label">Diagnostics</label>
+<label class="ds-switch">
+<input id="diagnosticsVisibleInput" type="checkbox">
+<span class="ds-switch-track">
+</span>
+</label>
+</div>
+</div>
+</section>
+</section>
+</div>
+</aside>
+<section class="koke-stage" aria-label="Moss workspace">
+<div id="viewportWrap" class="koke-viewport-wrap">
+<canvas id="viewport" aria-label="Moss simulation viewport">
+</canvas>
+<div id="brushPreview" class="koke-brush-preview" aria-hidden="true">
+</div>
+</div>
+<div class="koke-transport" role="group" aria-label="Simulation transport">
+<button id="simPlayBtn" class="ds-btn ds-btn-sm ds-btn-primary" type="button" aria-label="Play" title="Play">
+<i class="iconoir-play-solid" aria-hidden="true">
+</i>
+<span>Play</span>
+</button>
+<button id="simStepBtn" class="ds-btn ds-btn-sm koke-icon-button" type="button" aria-label="Step" title="Step">
+<i class="iconoir-skip-next" aria-hidden="true">
+</i>
+<span>Step</span>
+</button>
+<button id="simRestartBtn" class="ds-btn ds-btn-sm koke-icon-button" type="button" aria-label="Restart" title="Restart">
+<i class="iconoir-refresh-double" aria-hidden="true">
+</i>
+<span>Restart</span>
+</button>
+<output id="elapsedTime" class="koke-elapsed" aria-label="Elapsed simulation time">00:00.00</output>
+<label class="koke-speed" for="playbackSpeedInput">
+<span>Speed</span>
+<input id="playbackSpeedInput" type="range" min="0.25" max="4" step="0.25">
+<output id="playbackSpeedValue">
+</output>
+</label>
+<div class="koke-transport-end">
+<button id="captureBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Capture" title="Capture">
+<i class="iconoir-camera" aria-hidden="true">
+</i>
+<span>Capture</span>
+</button>
+<button id="observationToggleBtn" class="ds-btn ds-btn-sm koke-icon-button" type="button" aria-label="Observation" title="Observation">
+<i class="iconoir-info-circle" aria-hidden="true">
+</i>
+<span>Observation</span>
+</button>
+</div>
+</div>
+</section>
+<aside id="observationPanel" class="koke-observation" aria-label="Observation">
+<header class="koke-panel-header">
+<h2>Observation</h2>
+<button id="observationCloseBtn" class="ds-btn ds-btn-sm koke-icon-button" type="button" aria-label="Close observation" title="Close observation">
+<i class="iconoir-xmark" aria-hidden="true">
+</i>
+<span>Close observation</span>
+</button>
+</header>
+<div class="koke-panel-body">
+<section class="koke-section">
+<h3>Growth</h3>
+<dl class="koke-metrics">
+<div>
+<dt>Coverage</dt>
+<dd id="metricActiveCells">-</dd>
+</div>
+<div>
+<dt>Biomass</dt>
+<dd id="metricDensity">-</dd>
+</div>
+<div>
+<dt>Spores in flight</dt>
+<dd id="metricSpores">-</dd>
+</div>
+<div>
+<dt>Germinations</dt>
+<dd id="metricGerminations">-</dd>
+</div>
+</dl>
+</section>
+<details id="diagnosticDetails">
+<summary>Performance</summary>
+<dl class="koke-metrics">
+<div>
+<dt>FPS</dt>
+<dd id="metricFps">-</dd>
+</div>
+<div>
+<dt>Frame ms</dt>
+<dd id="metricFrameMs">-</dd>
+</div>
+<div>
+<dt>Sim ticks/s</dt>
+<dd id="metricTicks">-</dd>
+</div>
+<div>
+<dt>Tick ms</dt>
+<dd id="metricTickMs">-</dd>
+</div>
+<div>
+<dt>Clumps</dt>
+<dd id="metricClumps">-</dd>
+</div>
+<div>
+<dt>Batch size</dt>
+<dd id="metricBatch">-</dd>
+</div>
+<div>
+<dt>Paint strokes</dt>
+<dd id="metricPaintOps">-</dd>
+</div>
+<div>
+<dt>Last stroke</dt>
+<dd id="metricLastPaint">-</dd>
+</div>
+<div>
+<dt>Triangles</dt>
+<dd id="metricTriangles">-</dd>
+</div>
+</dl>
+<button id="copyDebugBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Copy diagnostics" title="Copy diagnostics">
+<i class="iconoir-copy" aria-hidden="true">
+</i>
+<span>Copy diagnostics</span>
+</button>
+</details>
+<section class="koke-section">
+<h3>Recent events</h3>
+<div id="debugLog" class="koke-debug__log">
+</div>
+</section>
+</div>
+</aside>
+<button id="panelBackdrop" class="koke-backdrop" type="button" aria-label="Close open panels" hidden>
+</button>
+</main>
   <script type="importmap">
     {
       "imports": {

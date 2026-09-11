@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## 2026-09-11 - studio workflow
+- Recorded the reviewed cross-project UI/model/render/export proposal in `STUDIO_PROPOSAL.md`, indexed it, and added Stage 1 acceptance checks and product/roadmap decisions.
+- Delivered the compact left control rail, right Observation panel, Scene/Moss/Render/Export/Settings organization, balanced insets, collapsible panels and responsive drawers.
+- Moved playback and capture below the viewport; added fixed-tick stepping, selected-preset restart, elapsed time and accurate fractional speed labels. Canvas/camera/effects resize when panels change.
+- Added keyboard tab navigation, disclosure settings, overlay dismissal/focus restoration and focused desktop/mobile browser regression checks. No moss biology or geometry changes in this stage.
+- Added selectable Rock, Sphere and faceted Icosahedron surfaces with independent substrate detail; surface changes preserve the radial growth field, rebuild surface-dependent data and anchors, and clear incompatible world-space spores.
+- Added Surface mat, Flat triangles, Flat diamonds, Crossed cards, Low-poly clumps and Detailed shoots modes plus density, size, width and rotation variation controls.
+- Added root/tip/stressed palettes and Uniform/Species/Health/Thickness/Moisture/Height mapping with range, inversion and texture controls. Added focused sampler, state-preservation, WebGL and triangle-budget checks.
+
+## 2026-09-11
+- Replaced the active color-only field path with validated, fixed-time growth on a shared radial rock surface; repaired default NaNs, mapping, species propagation, environmental updates, and statistics.
+- Added persistent thickness, age, stress, dead material, dormant reserves, spatial carrying capacity, drought collapse, and species-preserving recovery.
+- Built layered moss with a basal material, 1,500 stable cushion anchors, up to 60,000 shoot instances, species-dependent morphology, and directional/contact shadows.
+- Added a deterministic 160-slot spore pool with flight, substrate landing, delayed germination, and diagnostics.
+- Added Mature/Seed/Bare presets, playback/aging controls, fixed camera presets, macro view, optional dew and soft focus, lower detail, and effect-aware PNG capture.
+- Added active-field/spore regressions and browser interaction/performance harnesses; preserved the existing uncommitted shell and legacy prototype work.
+
+## 2026-09-10
+- Audited the active moss field and renderer against four supplied visual references; documented numerical/mapping defects, missing geometry/lifecycle capabilities, and a staged improvement proposal in `data/MOSS_RENDERING_AUDIT_2026-09-10.md`.
+- Added standalone diagnostic probes and captured results for the active field. Existing syntax checks and six legacy tests pass; browser/GPU visual verification remains outstanding. No production behavior changed.
+
+## 2026-05-22
+- Added project audit report at `_docs/data/AUDIT_2026-05-22.md` to document implementation drift, product-scope misalignment, and recommended realignment paths.
+- Reframed KOKE product direction around an ambient growth simulation first, with moss painting moved to a later phase after visual validation.
+- Rewrote `PRODUCT.md`, `ROADMAP.md`, and `QA.md` to align the project with the ambient-first MVP.
+- Added `_docs/data/DIRECTION_2026-05-22_AMBIENT_FIRST.md` as a concise direction brief for the reset.
+- Reworked the app shell to present an ambient review surface by default, moving growth, painting, and performance controls into a dedicated `Lab` tab while keeping scene review and capture actions immediately accessible.
+- Corrected the shell toward a laboratory feel by restoring live observation metrics and event logging, removing excessive instructional copy, and making the simulation start from a paused ready state so `Start` has a clear effect.
+
 ## 2026-04-24
 - Added multi-species moss simulation support (`Forest Moss`, `Rock Lichen`, `Velvet Moss`) with species-aware growth and habitat weighting.
 - Implemented neighbor-driven species propagation so painted/seeded colonies spread naturally over time.
@@ -11,6 +40,14 @@
 - Added `mass` consolidation field and cohesion update to merge nearby colonies into larger continuous growth patches.
 - Added species clump profiles so rendered growth forms differ by species without per-instance mesh allocations.
 - Added viewport brush-radius preview ring for precise painting interaction.
+- Implemented growth-map rendering phase: simulation now builds a low-res coverage texture (`density`, `mass`, `health`, `species`) consumed by shader as primary moss surface signal.
+- Updated shader to sample neighboring map texels for bloom-like spread/merge/decay transitions, reducing sparse spotty polygon look.
+- Reduced geometric dependence by making instanced clumps sparse macro detail only.
+- Enhanced moss shader lifecycle readability with explicit spore/bloom/mature/decay/death phase blending from growth-map channels.
+- Switched species tint source to map-driven species state and added species-specific grain/noise profiles for clearer tone/texture differences.
+- Introduced a carpet-first refactor with `src/field-sim.js` and `src/field-renderer.js`.
+- Replaced sparse clump-first dependency with a continuous field map simulation (species channels + vitality + wet paint) rendered directly in shader.
+- Kept paint interaction but redirected strokes to texture-field deposition for liquid-to-bloom transitions.
 
 ## 2026-04-23
 - Scaffolded Phase 1 Three.js application structure and entrypoint.

@@ -1,0 +1,45 @@
+// Import from the local app page; browser-session.mjs can run this through CDP.
+export async function runBrowserChecks() {
+  const k = window.koke, passed = [];
+  const check = (condition, message) => { if (!condition) throw new Error(message); passed.push(message); };
+  const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  const click = (id) => document.getElementById(id).click();
+  const toggle = (id, value) => { const el = document.getElementById(id); el.checked = value; el.dispatchEvent(new Event('change', { bubbles: true })); };
+  check(Boolean(k), 'application initialized');
+  click('simPlayBtn'); await wait(350); click('simPlayBtn');
+  check(k.simulation.totalTicks > 0, 'Start advances the active simulation');
+  const paused = k.simulation.totalTicks; await wait(150);
+  check(k.simulation.totalTicks === paused, 'Pause freezes simulation and spores');
+  click('barePresetBtn');
+  check(k.simulation.getStats().avgDensity === 0 && k.spores.getStats().active === 0, 'Bare clears moss and pending spores');
+  k.simulation.paintAt({ x: 0, y: 1.85, z: 0 }, { radius: 0.7, strength: 1, speciesId: 2 });
+  check(k.simulation.getStats().avgDensity > 0, 'painting seeds the current surface');
+  click('seedPresetBtn');
+  const initial = k.simulation.getStats().avgDensity;
+  for (let i = 0; i < 400; i++) k.simulation.stepBatch();
+  check(k.simulation.getStats().avgDensity > initial, 'seed colonies expand');
+  click('maturePresetBtn');
+  for (let i = 0; i < 800; i++) k.simulation.stepBatch();
+  const grown = k.simulation.getStats(), sporeStats = k.spores.getStats();
+  check(grown.nonfinite === 0, 'evolved field remains finite');
+  check(sporeStats.landed > 0 && sporeStats.germinated > 0, 'released spores land and establish colonies');
+  check(grown.activeRatio < 0.95, 'growth retains exposed substrate');
+  k.simulation.setEnvironment({ moisture: 0 });
+  for (let i = 0; i < 800; i++) k.simulation.stepBatch();
+  const collapsed = k.simulation.getStats();
+  check(collapsed.avgDensity < grown.avgDensity * 0.4 && collapsed.collapses > 0, 'drought collapses living colonies');
+  k.simulation.setEnvironment({ moisture: 0.72 }); click('maturePresetBtn');
+  k.mossRenderer.setCoverage(k.simulation.fillCoverageMap());
+  k.setViewPreset('macro');
+  toggle('softFocusInput', true); toggle('dewInput', true);
+  await wait(600);
+  k.captureSnapshot(false);
+  check(document.getElementById('snapshotThumb').src.startsWith('data:image/png;base64,'), 'snapshot exports a PNG with viewing effects');
+  check(k.renderer.info.programs.every((program) => program.diagnostics?.runnable !== false), 'compiled GPU programs are runnable');
+  toggle('softFocusInput', false); toggle('dewInput', false);
+  const detail = document.getElementById('detailInput'); detail.value = 'low'; detail.dispatchEvent(new Event('change'));
+  check(k.mossRenderer.tufts.count === 30000 && k.simulation.getStats().avgDensity > 0, 'low detail reduces geometry without resetting biology');
+  detail.value = 'high'; detail.dispatchEvent(new Event('change'));
+  k.setViewPreset('iso');
+  return { passed, grown, spores: sporeStats, collapsed };
+}

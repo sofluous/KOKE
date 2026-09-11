@@ -1,6 +1,10 @@
-import { createScene, directionFromAngles, handleResize } from "./scene.js";
-import { analyzeSurface, GrowthSimulation, defaultEnvironment, mossSpeciesCatalog } from "./simulation.js";
-import { createMossRenderer } from "./renderer.js";
+import { createScene, createSurfaceGeometry, directionFromAngles, handleResize } from "./scene.js";
+import { mossSpeciesCatalog } from "./simulation.js";
+import { sampleRock, surfaceCatalog } from './substrate.js';
+import { SporeSimulation } from './spores.js';
+import { createViewEffects } from './view-effects.js';
+import { FieldSimulation, defaultFieldEnvironment } from "./field-sim.js";
+import { createFieldRenderer } from "./field-renderer.js";
 import { createUI } from "./ui.js";
 import { createDiagnostics } from "./debug.js";
 
@@ -12,44 +16,64 @@ const snapshotTitle = document.getElementById("snapshotTitle");
 const snapshotMeta = document.getElementById("snapshotMeta");
 
 const { scene, camera, renderer, controls, lights, meshGeometry, THREE } = createScene(canvas);
+const effects = createViewEffects(renderer, scene, camera, controls);
 
 const initialLightAzimuth = 18;
 const initialLightElevation = 54;
 const lightDir = directionFromAngles(initialLightAzimuth, initialLightElevation);
 lights.sun.position.copy(lightDir.clone().multiplyScalar(8));
 
-const surface = analyzeSurface(meshGeometry, lightDir);
-const simulation = new GrowthSimulation(surface, {
-  environment: defaultEnvironment,
+const surface = { sampleSurface: sampleRock };
+const simulation = new FieldSimulation(surface, {
+  environment: defaultFieldEnvironment,
   speciesCatalog: mossSpeciesCatalog,
   lightDirection: { x: lightDir.x, y: lightDir.y, z: lightDir.z },
+  mapSize: 128,
 });
 
 const speciesCatalog = simulation.getSpeciesCatalog();
-const mossRenderer = createMossRenderer(THREE, scene, meshGeometry, {
+const mossRenderer = createFieldRenderer(THREE, scene, meshGeometry, {
   speciesPalette: speciesCatalog.map((species) => species.color),
-  speciesProfiles: speciesCatalog,
+  coverageMapSize: simulation.mapSize,
+  sampleSurface: sampleRock,
 });
-mossRenderer.setCoverage(
-  simulation.fillRawDensityBuffer(),
-  simulation.fillRawSpeciesBuffer(),
-  simulation.fillRawMassBuffer()
-);
-mossRenderer.updateClumps(surface.cells, surface.triangles);
+const spores = new SporeSimulation(simulation);
+simulation.onStep = (dt) => spores.step(dt);
+mossRenderer.setCoverage(simulation.fillCoverageMap());
+simulation.setRunning(false);
 
 let diagnostics;
 const ui = createUI(
   {
-    playing: true,
-    moisture: defaultEnvironment.moisture,
-    slopeBias: defaultEnvironment.slopeBias,
-    growthRate: defaultEnvironment.growthRate,
-    decayRate: defaultEnvironment.decayRate,
-    diffusionRate: defaultEnvironment.diffusionRate,
-    colonization: defaultEnvironment.colonization,
-    gravityCreep: defaultEnvironment.gravityCreep,
-    tickEveryFrames: defaultEnvironment.tickEveryFrames,
-    batchRatio: defaultEnvironment.batchRatio,
+    playing: false,
+    initialState: 'mature',
+    moisture: defaultFieldEnvironment.moisture,
+    slopeBias: defaultFieldEnvironment.slopeBias,
+    growthRate: defaultFieldEnvironment.growthRate,
+    decayRate: defaultFieldEnvironment.decayRate,
+    diffusionRate: defaultFieldEnvironment.diffusionRate,
+    colonization: defaultFieldEnvironment.colonization,
+    gravityCreep: defaultFieldEnvironment.gravityCreep,
+    cycleSpeed: defaultFieldEnvironment.cycleSpeed,
+    playbackSpeed: 1,
+    softFocus: false,
+    dew: false,
+    detail: 'high',
+    surface: 'rock',
+    surfaceDetail: 'high',
+    representation: 'shoots',
+    mossDensity: 1,
+    mossScale: 1,
+    mossAspect: 1,
+    mossOrientation: 1,
+    mossRootColor: '#24451f',
+    mossTipColor: '#a5c950',
+    mossStressColor: '#4b2814',
+    mossColorSource: 'species',
+    mossColorRange: 1,
+    mossColorInvert: false,
+    mossTextureScale: 18,
+    mossTextureStrength: 0.22,
     lightAzimuth: initialLightAzimuth,
     lightElevation: initialLightElevation,
     wireframe: false,
@@ -71,8 +95,37 @@ const ui = createUI(
       diagnostics?.pushLog(`Environment changed: ${key}=${Number(value).toFixed(3)}`);
     },
     onPerfSetting(key, value) {
-      simulation.setEnvironment({ [key]: value });
-      diagnostics?.pushLog(`Performance changed: ${key}=${value}`);
+      ui.state[key] = value;
+    },
+    onPreset(mode) {
+      simulation.setRunning(false);
+      ui.setPlaying(false);
+      ui.setInitialState(mode);
+      simulation.reset(mode);
+      spores.reset();
+      ui.setTime(0);
+      mossRenderer.setCoverage(simulation.fillCoverageMap());
+      diagnostics?.pushLog(`Scene reset: ${mode}.`);
+    },
+    onStep() {
+      simulation.setRunning(false);
+      ui.setPlaying(false);
+      simulation.accumulator = 0;
+      simulation.stepBatch();
+      ui.setTime(simulation.time);
+    },
+    onViewSetting(key,value) {
+      if(key==='softFocus') effects.setEnabled(value);
+      if(key==='dew') mossRenderer.setDew(value);
+      if(key==='detail') mossRenderer.setQuality(value);
+    },
+    onSurface(key) { applySurface(key,ui.state.surfaceDetail); },
+    onSurfaceDetail(detail) { applySurface(ui.state.surface,detail); },
+    onAppearance(key,value) {
+      if(key==='representation')mossRenderer.setRepresentation(value);
+      else if(key==='density')mossRenderer.setDensity(value);
+      else mossRenderer.setAppearance({[key]:value});
+      diagnostics?.pushLog(`Appearance changed: ${key}=${value}.`);
     },
     onPaintToggle(enabled) {
       canvas.classList.toggle("is-paint-mode", enabled);
@@ -98,11 +151,11 @@ const ui = createUI(
     },
     onCaptureView() {
       captureSnapshot(false);
-      ui.setUtilityTab("snapshot");
+      ui.setUtilityTab("export");
     },
     onExportPng() {
       captureSnapshot(true);
-      ui.setUtilityTab("snapshot");
+      ui.setUtilityTab("export");
     },
     onExportReport() {
       exportReport();
@@ -119,7 +172,20 @@ diagnostics = createDiagnostics({
   simulation,
   mossRenderer,
   uiState: ui.state,
+  spores,
+  renderer,
 });
+diagnostics.pushLog("Simulation ready. Press Play to begin.");
+
+function applySurface(key,detail) {
+  const definition=surfaceCatalog[key]||surfaceCatalog.rock;
+  simulation.setRunning(false);ui.setPlaying(false);
+  simulation.setSurface(definition.sample);
+  spores.reset();
+  mossRenderer.setSurface(definition.sample,createSurfaceGeometry(definition.sample,detail,key==='icosahedron'));
+  mossRenderer.setCoverage(simulation.fillCoverageMap());
+  diagnostics?.pushLog(`Surface changed: ${definition.name} (${detail}). Growth field preserved; spores cleared.`);
+}
 
 const raycaster = new THREE.Raycaster();
 const pointerNdc = new THREE.Vector2();
@@ -144,7 +210,7 @@ function paintFromEvent(event) {
   const hits = raycaster.intersectObject(mossRenderer.mesh, false);
   if (!hits.length) return;
 
-  const painted = simulation.paintAt(hits[0].point, {
+  const painted = simulation.paintAt(mossRenderer.mesh.worldToLocal(hits[0].point.clone()), {
     radius: ui.state.paintRadius,
     strength: ui.state.paintStrength,
     speciesId: ui.state.paintSpeciesId,
@@ -155,7 +221,7 @@ function paintFromEvent(event) {
     const now = performance.now();
     if (now - lastPaintLogAt > 180) {
       diagnostics?.pushLog(
-        `${ui.state.paintErase ? "Erase" : "Paint"} stroke: ${painted} cells @ r=${ui.state.paintRadius.toFixed(2)}`
+        `${ui.state.paintErase ? "Erase" : "Paint"} stroke: ${painted} texels @ r=${ui.state.paintRadius.toFixed(2)}`
       );
       lastPaintLogAt = now;
     }
@@ -229,18 +295,22 @@ canvas.addEventListener("pointercancel", stopPainting);
 window.addEventListener("pointerup", stopPainting);
 
 function setViewPreset(preset) {
-  const target = controls.target.clone();
-  const radius = camera.position.distanceTo(target);
-  const y = target.y;
+  if (preset === 'macro') {
+    controls.target.set(0.65, 0.85, 1.3);
+    camera.position.set(2.5, 2.3, 4.1);
+    controls.update();
+    return;
+  }
+  controls.target.set(0, 0.15, 0);
   const presets = {
-    iso: new THREE.Vector3(radius * 0.92, y + radius * 0.7, radius * 0.92),
-    front: new THREE.Vector3(target.x, y, target.z + radius * 1.1),
-    top: new THREE.Vector3(target.x, y + radius * 1.25, target.z + 0.001),
-    left: new THREE.Vector3(target.x - radius * 1.1, y, target.z),
+    iso: new THREE.Vector3(5.4, 3.7, 6.3),
+    front: new THREE.Vector3(0, 0.15, 8.2),
+    top: new THREE.Vector3(0, 8.2, 0.001),
+    left: new THREE.Vector3(-8.2, 0.15, 0),
   };
   const next = presets[preset] || presets.iso;
   camera.position.copy(next);
-  camera.lookAt(target);
+  camera.lookAt(controls.target);
   controls.update();
 }
 
@@ -262,6 +332,9 @@ function downloadDataUrl(name, dataUrl) {
 }
 
 function captureSnapshot(download) {
+  if (simulation.dirty) mossRenderer.setCoverage(simulation.fillCoverageMap());
+  mossRenderer.update(simulation.time, spores);
+  effects.render();
   const png = renderer.domElement.toDataURL("image/png");
   if (snapshotThumb) snapshotThumb.src = png;
   if (snapshotTitle) snapshotTitle.textContent = "Viewport snapshot captured";
@@ -284,8 +357,14 @@ function exportReport() {
   diagnostics?.pushLog("Report exported.");
 }
 
-window.addEventListener("resize", () => handleResize(renderer, camera, canvas));
-handleResize(renderer, camera, canvas);
+function resizeViewport() {
+  handleResize(renderer, camera, canvas);
+  effects.resize(canvas.clientWidth, canvas.clientHeight);
+}
+window.addEventListener('resize', resizeViewport);
+const viewportObserver = new ResizeObserver(resizeViewport);
+viewportObserver.observe(viewportWrap);
+resizeViewport();
 
 let lastFrameTime = performance.now();
 function animate() {
@@ -293,23 +372,20 @@ function animate() {
   const frameMs = now - lastFrameTime;
   lastFrameTime = now;
 
-  const simStepped = simulation.updateFrame();
+  const simStepped = simulation.updateFrame(frameMs / 1000 * ui.state.playbackSpeed);
+  if (simStepped) ui.setTime(simulation.time);
 
   if (simulation.dirty) {
-    mossRenderer.setCoverage(
-      simulation.fillRawDensityBuffer(),
-      simulation.fillRawSpeciesBuffer(),
-      simulation.fillRawMassBuffer()
-    );
-    mossRenderer.updateClumps(surface.cells, surface.triangles);
+    mossRenderer.setCoverage(simulation.fillCoverageMap());
   }
+  mossRenderer.update(simulation.time, spores);
 
   diagnostics.update(frameMs, simStepped);
   controls.update();
-  renderer.render(scene, camera);
+  effects.render();
   requestAnimationFrame(animate);
 }
 
 animate();
 
-window.koke = { scene, camera, simulation, ui, diagnostics };
+window.koke = { scene, camera, simulation, ui, diagnostics, mossRenderer, spores, renderer, controls, effects, setViewPreset, captureSnapshot };

@@ -1,5 +1,7 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
 import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js";
+import { sampleRock, uvAt } from './substrate.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 const DEFAULT_LIGHT_ELEVATION_DEG = 54;
 const DEFAULT_LIGHT_AZIMUTH_DEG = 18;
@@ -15,30 +17,46 @@ export function createScene(canvas) {
   const initialHeight = Math.max(1, canvas.clientHeight || window.innerHeight);
   renderer.setSize(initialWidth, initialHeight, false);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.08;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color("#0f1812");
+  scene.background = new THREE.Color("#171e23");
+  scene.fog = new THREE.Fog('#171e23', 15, 35);
+  const environment = new RoomEnvironment();
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.userData.dewEnvironment = pmrem.fromScene(environment).texture;
+  environment.dispose(); pmrem.dispose();
 
-  const camera = new THREE.PerspectiveCamera(55, initialWidth / initialHeight, 0.1, 200);
-  camera.position.set(6.2, 5.1, 6.8);
+  const camera = new THREE.PerspectiveCamera(42, initialWidth / initialHeight, 0.05, 80);
+  camera.position.set(5.4, 3.7, 6.3);
 
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
-  controls.target.set(0, 0.7, 0);
+  controls.target.set(0, 0.15, 0);
+  controls.minDistance = 2.6;
+  controls.maxDistance = 16;
 
-  const ambient = new THREE.AmbientLight("#95a889", 0.6);
+  const ambient = new THREE.HemisphereLight("#c1dce9", '#252d20', 1.25);
   scene.add(ambient);
 
-  const sun = new THREE.DirectionalLight("#f5ffe8", 1.2);
+  const sun = new THREE.DirectionalLight("#ffefcf", 2.7);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -3.5, right: 3.5, top: 3.5, bottom: -3.5, near: 0.5, far: 20 });
+  sun.shadow.bias = -0.0002;
+  sun.shadow.normalBias = 0.025;
   sun.position.copy(directionFromAngles(DEFAULT_LIGHT_AZIMUTH_DEG, DEFAULT_LIGHT_ELEVATION_DEG).multiplyScalar(8));
   scene.add(sun);
 
-  const grid = new THREE.GridHelper(14, 20, "#35553e", "#24402f");
-  grid.position.y = -1.55;
-  scene.add(grid);
+  const rim = new THREE.DirectionalLight('#b7d9e8', 1.8);
+  rim.position.set(-4, 3, -3); scene.add(rim);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: '#20282b', roughness: 0.9 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.y = -2.05; floor.receiveShadow = true; scene.add(floor);
 
-  const geometry = new THREE.IcosahedronGeometry(2.2, 6).toNonIndexed();
-  geometry.computeVertexNormals();
+  const geometry = createSurfaceGeometry(sampleRock);
 
   return {
     THREE,
@@ -52,6 +70,19 @@ export function createScene(canvas) {
     },
     meshGeometry: geometry,
   };
+}
+
+export function createSurfaceGeometry(sampleSurface, detail = 'high', faceted = false) {
+  const [widthSegments,heightSegments]=detail==='low'?[48,24]:[128,64];
+  const geometry = new THREE.SphereGeometry(1, widthSegments, heightSegments);
+  const position = geometry.attributes.position;
+  for (let i = 0; i < position.count; i += 1) {
+    const uv = uvAt({ x: position.getX(i), y: position.getY(i), z: position.getZ(i) });
+    const p = sampleSurface(uv.u, uv.v);
+    position.setXYZ(i, p.x, p.y, p.z);
+  }
+  if(faceted){const flat=geometry.toNonIndexed();geometry.dispose();flat.computeVertexNormals();return flat;}
+  geometry.computeVertexNormals();return geometry;
 }
 
 export function directionFromAngles(azimuthDeg, elevationDeg) {

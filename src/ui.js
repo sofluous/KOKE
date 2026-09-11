@@ -1,3 +1,5 @@
+import { createStudioShell } from './studio-shell.js';
+
 function bindRange({ id, valueId, state, key, onChange, format = (v) => Number(v).toFixed(2) }) {
   const input = document.getElementById(id);
   const output = document.getElementById(valueId);
@@ -19,8 +21,28 @@ function bindButton(id, handler) {
   btn?.addEventListener("click", handler);
 }
 
+function bindSelect(id, state, key, onChange) {
+  const input=document.getElementById(id);if(!input)return;
+  input.value=state[key];input.addEventListener('change',()=>{state[key]=input.value;onChange(input.value);});
+}
+
 export function createUI(initialState, callbacks) {
   const state = { ...initialState };
+  for(const key of ['softFocus','dew']) {
+    const input=document.getElementById(key+'Input');
+    if(input) {input.checked=state[key]; input.addEventListener('change',()=>{state[key]=input.checked;callbacks.onViewSetting(key,input.checked);});}
+  }
+  const detail=document.getElementById('detailInput');
+  if(detail) {detail.value=state.detail;detail.addEventListener('change',()=>{state.detail=detail.value;callbacks.onViewSetting('detail',detail.value);});}
+  bindSelect('surfaceInput',state,'surface',callbacks.onSurface);
+  bindSelect('surfaceDetailInput',state,'surfaceDetail',callbacks.onSurfaceDetail);
+  bindSelect('representationInput',state,'representation',value=>callbacks.onAppearance('representation',value));
+  bindSelect('mossColorSourceInput',state,'mossColorSource',value=>callbacks.onAppearance('colorSource',value));
+  for(const [id,key,target] of [['mossRootColorInput','mossRootColor','rootColor'],['mossTipColorInput','mossTipColor','tipColor'],['mossStressColorInput','mossStressColor','stressColor']]){
+    const input=document.getElementById(id);if(input){input.value=state[key];input.addEventListener('input',()=>{state[key]=input.value;callbacks.onAppearance(target,input.value);});}
+  }
+  const colorInvert=document.getElementById('mossColorInvertInput');
+  if(colorInvert){colorInvert.checked=state.mossColorInvert;colorInvert.addEventListener('change',()=>{state.mossColorInvert=colorInvert.checked;callbacks.onAppearance('invert',colorInvert.checked);});}
 
   bindRange({
     id: "moistureInput",
@@ -29,6 +51,15 @@ export function createUI(initialState, callbacks) {
     key: "moisture",
     onChange: (value) => callbacks.onEnvironment("moisture", value),
   });
+  for(const config of [
+    ['mossDensityInput','mossDensityValue','mossDensity','density'],
+    ['mossScaleInput','mossScaleValue','mossScale','scale'],
+    ['mossAspectInput','mossAspectValue','mossAspect','aspect'],
+    ['mossOrientationInput','mossOrientationValue','mossOrientation','orientation'],
+    ['mossColorRangeInput','mossColorRangeValue','mossColorRange','colorRange'],
+    ['mossTextureScaleInput','mossTextureScaleValue','mossTextureScale','textureScale'],
+    ['mossTextureStrengthInput','mossTextureStrengthValue','mossTextureStrength','textureStrength'],
+  ]) bindRange({id:config[0],valueId:config[1],state,key:config[2],onChange:value=>callbacks.onAppearance(config[3],value)});
   bindRange({
     id: "slopeBiasInput",
     valueId: "slopeBiasValue",
@@ -88,19 +119,19 @@ export function createUI(initialState, callbacks) {
     onChange: (value) => callbacks.onLightAngles(state.lightAzimuth, value),
   });
   bindRange({
-    id: "tickEveryFramesInput",
-    valueId: "tickEveryFramesValue",
+    id: "playbackSpeedInput",
+    valueId: "playbackSpeedValue",
     state,
-    key: "tickEveryFrames",
-    format: (v) => `${Math.round(v)}f`,
-    onChange: (value) => callbacks.onPerfSetting("tickEveryFrames", value),
+    key: "playbackSpeed",
+    format: (v) => `${Number(v)}x`,
+    onChange: (value) => callbacks.onPerfSetting("playbackSpeed", value),
   });
   bindRange({
-    id: "batchRatioInput",
-    valueId: "batchRatioValue",
+    id: "cycleSpeedInput",
+    valueId: "cycleSpeedValue",
     state,
-    key: "batchRatio",
-    onChange: (value) => callbacks.onPerfSetting("batchRatio", value),
+    key: "cycleSpeed",
+    onChange: (value) => callbacks.onEnvironment("cycleSpeed", value),
   });
 
   bindRange({
@@ -154,9 +185,14 @@ export function createUI(initialState, callbacks) {
     });
   }
 
-  bindButton("simStartBtn", () => callbacks.onPlayToggle(true, "start-button"));
-  bindButton("simPauseBtn", () => callbacks.onPlayToggle(false, "pause-button"));
-  bindButton("snapshotCaptureBtn", () => callbacks.onCaptureView());
+  bindButton('simPlayBtn', () => callbacks.onPlayToggle(!state.playing, 'transport'));
+  bindButton('simStepBtn', () => callbacks.onStep());
+  bindButton('simRestartBtn', () => callbacks.onPreset(state.initialState));
+  bindButton('maturePresetBtn', () => callbacks.onPreset('mature'));
+  bindButton('seedPresetBtn', () => callbacks.onPreset('seed'));
+  bindButton('barePresetBtn', () => callbacks.onPreset('bare'));
+  bindButton('macroViewBtn', () => callbacks.onViewPreset('macro'));
+  bindButton('captureBtn', () => callbacks.onCaptureView());
   bindButton("exportSnapshotBtn", () => callbacks.onExportPng());
   bindButton("exportReportBtn", () => callbacks.onExportReport());
   bindButton("widgetResetBtn", () => callbacks.onViewPreset("iso"));
@@ -169,26 +205,8 @@ export function createUI(initialState, callbacks) {
     setPaintEnabled(next);
   });
 
-  const utilityTabs = Array.from(document.querySelectorAll("[data-utility-tab]"));
-  const utilityPanels = Array.from(document.querySelectorAll("[data-utility-panel]"));
-
-  function setUtilityTab(tabName) {
-    utilityTabs.forEach((tab) => {
-      const isActive = tab.dataset.utilityTab === tabName;
-      tab.classList.toggle("is-active", isActive);
-      tab.setAttribute("aria-pressed", isActive ? "true" : "false");
-      tab.setAttribute("aria-selected", isActive ? "true" : "false");
-    });
-    utilityPanels.forEach((panel) => {
-      const isActive = panel.dataset.utilityPanel === tabName;
-      panel.hidden = !isActive;
-      panel.classList.toggle("is-active", isActive);
-    });
-  }
-
-  utilityTabs.forEach((tab) => {
-    tab.addEventListener("click", () => setUtilityTab(tab.dataset.utilityTab));
-  });
+  const shell = createStudioShell();
+  const setUtilityTab = shell.setTab;
 
   const presetButtons = [
     { id: "widgetIsoBtn", preset: "iso" },
@@ -204,16 +222,27 @@ export function createUI(initialState, callbacks) {
 
   function setPlaying(playing) {
     state.playing = playing;
-    const startBtn = document.getElementById("simStartBtn");
-    const pauseBtn = document.getElementById("simPauseBtn");
-    if (startBtn) {
-      startBtn.classList.toggle("ds-btn-primary", playing);
-      startBtn.setAttribute("aria-pressed", playing ? "true" : "false");
+    const button = document.getElementById('simPlayBtn');
+    const label = playing ? 'Pause' : 'Play';
+    button.querySelector('span').textContent = label;
+    button.querySelector('i').className = playing ? 'iconoir-pause' : 'iconoir-play-solid';
+    button.setAttribute('aria-label', label);
+    button.title = label;
+    button.setAttribute('aria-pressed', String(playing));
+  }
+
+  function setInitialState(mode) {
+    state.initialState = mode;
+    for (const name of ['mature', 'seed', 'bare']) {
+      const button = document.getElementById(name + 'PresetBtn');
+      button.setAttribute('aria-pressed', String(name === mode));
+      button.classList.toggle('ds-btn-primary', name === mode);
     }
-    if (pauseBtn) {
-      pauseBtn.classList.toggle("ds-btn-primary", !playing);
-      pauseBtn.setAttribute("aria-pressed", !playing ? "true" : "false");
-    }
+  }
+
+  function setTime(seconds) {
+    const hundredths = Math.floor((seconds + 1e-8) * 100);
+    document.getElementById('elapsedTime').textContent = `${String(Math.floor(hundredths / 6000)).padStart(2, '0')}:${String(Math.floor(hundredths / 100) % 60).padStart(2, '0')}.${String(hundredths % 100).padStart(2, '0')}`;
   }
 
   function setPaintEnabled(enabled) {
@@ -226,12 +255,14 @@ export function createUI(initialState, callbacks) {
 
   setPlaying(state.playing);
   setPaintEnabled(state.paintEnabled);
-  setUtilityTab("view");
+  setInitialState(state.initialState);
 
   return {
     state,
     setPlaying,
     setPaintEnabled,
     setUtilityTab,
+    setTime,
+    setInitialState,
   };
 }

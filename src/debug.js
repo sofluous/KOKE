@@ -6,7 +6,7 @@ function formatNow() {
   return new Date().toLocaleTimeString([], { hour12: false });
 }
 
-export function createDiagnostics({ simulation, mossRenderer, uiState }) {
+export function createDiagnostics({ simulation, mossRenderer, uiState, spores, renderer }) {
   const metricEls = {
     fps: document.getElementById("metricFps"),
     frameMs: document.getElementById("metricFrameMs"),
@@ -32,7 +32,10 @@ export function createDiagnostics({ simulation, mossRenderer, uiState }) {
     const line = `[${formatNow()}] ${message}`;
     logBuffer.unshift(line);
     while (logBuffer.length > 8) logBuffer.pop();
-    logEl.innerHTML = logBuffer.map((entry) => `<div class="koke-debug__log-line">${entry}</div>`).join("");
+    logEl.replaceChildren(...logBuffer.map((entry) => {
+      const lineEl = document.createElement('div');
+      lineEl.className = 'koke-debug__log-line'; lineEl.textContent = entry; return lineEl;
+    }));
   }
 
   async function copySnapshot() {
@@ -53,6 +56,8 @@ export function createDiagnostics({ simulation, mossRenderer, uiState }) {
       ui: { ...uiState },
       simulation: simStats,
       rendering: renderStats,
+      spores: spores?.getStats(),
+      gpu: renderer ? { ...renderer.info.render } : null,
       performance: {
         fps: Number((1000 / Math.max(0.001, smoothedFrameMs)).toFixed(1)),
         frameMs: Number(smoothedFrameMs.toFixed(2)),
@@ -87,6 +92,9 @@ export function createDiagnostics({ simulation, mossRenderer, uiState }) {
     metricEls.batch.textContent = `${simStats.lastBatchSize} cells`;
     metricEls.paintOps.textContent = String(simStats.paintOps);
     metricEls.lastPaint.textContent = `${simStats.lastPaintCount} cells`;
+    document.getElementById('metricSpores').textContent = String(spores.particles.filter(p => p.state === 1).length);
+    document.getElementById('metricGerminations').textContent = String(simStats.germinations);
+    document.getElementById('metricTriangles').textContent = renderer.info.render.triangles.toLocaleString();
   }
 
   pushLog("Diagnostics initialized.");
