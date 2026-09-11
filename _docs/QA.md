@@ -1,5 +1,10 @@
 # QA
 
+## Control organization verification - 2026-09-11
+The focused studio browser check passes 18 desktop assertions and 21 narrow-screen assertions with no browser errors. Coverage includes keyboard-accessible Object child tabs, correct Surface/Moss/Scene/Render ownership, a common right-aligned slider axis, top-level keyboard navigation, responsive drawers, transport access and capture routing. Visually reviewed [Object / Surface](data/ui-refactor-object-surface.png) and [Object / Moss](data/ui-refactor-object-moss.png). No simulation or rendering behavior changed.
+
+The subsequent Bonsai tab-style adjustment was reviewed at source level only, per user preference for lightweight validation of minor UI work. Future interactive checks should use Chrome rather than Edge.
+
 ## Studio Stage 2 verification - 2026-09-11
 Production syntax checks and all 20 numerical/spore tests pass. New unit checks cover finite normalized built-in samplers and state-preserving surface replacement. The focused browser check passes eight behavior assertions with no browser or shader errors; see [results](data/STAGE2_BROWSER_CHECK_2026-09-11.json). At the tested scene and 1440 x 1000 viewport, measured triangle counts were: detailed shoots 603,710; crossed cards 242,210; diamonds 122,210; low-poly clumps 123,710; triangles 62,210; surface mat 2,210. Density 0.25 reduced active shoot instances to 15,000. These counts are comparative measurements on the current scene, not fixed budgets across future models.
 

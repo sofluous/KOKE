@@ -4,6 +4,8 @@ export function createStudioShell() {
   const observation = document.getElementById('observationPanel');
   const tabs = Array.from(document.querySelectorAll('[data-utility-tab]'));
   const panels = Array.from(document.querySelectorAll('[data-utility-panel]'));
+  const objectTabs = Array.from(document.querySelectorAll('[data-object-tab]'));
+  const objectPanels = Array.from(document.querySelectorAll('[data-object-panel]'));
   const controlsButton = document.getElementById('controlsToggleBtn');
   const observationButton = document.getElementById('observationToggleBtn');
   const backdrop = document.getElementById('panelBackdrop');
@@ -38,7 +40,7 @@ export function createStudioShell() {
     sync();
   }
   function setTab(name, open = true) {
-    const next = tabs.some(t => t.dataset.utilityTab === name) ? name : 'scene';
+    const next = tabs.some(t => t.dataset.utilityTab === name) ? name : 'object';
     tabs.forEach(tab => {
       const active = tab.dataset.utilityTab === next;
       tab.classList.toggle('is-active', active);
@@ -47,6 +49,11 @@ export function createStudioShell() {
     });
     panels.forEach(panel => { panel.hidden = panel.dataset.utilityPanel !== next; });
     if (open) showControls(true);
+  }
+  function setObjectTab(name) {
+    const next=objectTabs.some(tab=>tab.dataset.objectTab===name)?name:'surface';
+    objectTabs.forEach(tab=>{const active=tab.dataset.objectTab===next;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;});
+    objectPanels.forEach(panel=>{panel.hidden=panel.dataset.objectPanel!==next;});
   }
   tabs.forEach((tab, index) => {
     tab.addEventListener('click', () => setTab(tab.dataset.utilityTab));
@@ -58,6 +65,15 @@ export function createStudioShell() {
       if (event.key === 'End') next = tabs.length - 1;
       if (next === undefined) return;
       event.preventDefault(); tabs[next].focus(); setTab(tabs[next].dataset.utilityTab);
+    });
+  });
+  objectTabs.forEach((tab,index)=>{
+    tab.addEventListener('click',()=>setObjectTab(tab.dataset.objectTab));
+    tab.addEventListener('keydown',event=>{
+      let next;if(event.key==='ArrowRight'||event.key==='ArrowDown')next=(index+1)%objectTabs.length;
+      if(event.key==='ArrowLeft'||event.key==='ArrowUp')next=(index+objectTabs.length-1)%objectTabs.length;
+      if(event.key==='Home')next=0;if(event.key==='End')next=objectTabs.length-1;if(next===undefined)return;
+      event.preventDefault();objectTabs[next].focus();setObjectTab(objectTabs[next].dataset.objectTab);
     });
   });
   controlsButton.addEventListener('click', () => showControls(!controlsOpen));
@@ -77,6 +93,6 @@ export function createStudioShell() {
   document.addEventListener('keydown', e => { if (e.key === 'Escape') dismiss(); });
   small.addEventListener('change', () => showControls(!small.matches));
   medium.addEventListener('change', () => showObservation(!medium.matches));
-  setTab('scene', false); sync();
-  return { setTab };
+  setObjectTab('surface');setTab('object', false); sync();
+  return { setTab, setObjectTab };
 }

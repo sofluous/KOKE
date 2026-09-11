@@ -22,12 +22,12 @@
 </button>
 </header>
 <nav class="koke-utility-rail" role="tablist" aria-label="Studio tools" aria-orientation="vertical">
-<button id="tab-scene" class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" type="button" role="tab" data-utility-tab="scene" aria-controls="panel-scene" aria-selected="false" tabindex="-1" title="Scene" aria-label="Scene">
-<i class="iconoir-sun-light" aria-hidden="true">
+<button id="tab-object" class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" type="button" role="tab" data-utility-tab="object" aria-controls="panel-object" aria-selected="false" tabindex="-1" title="Object" aria-label="Object">
+<i class="iconoir-cube" aria-hidden="true">
 </i>
 </button>
-<button id="tab-moss" class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" type="button" role="tab" data-utility-tab="moss" aria-controls="panel-moss" aria-selected="false" tabindex="-1" title="Moss" aria-label="Moss">
-<i class="iconoir-flask" aria-hidden="true">
+<button id="tab-scene" class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" type="button" role="tab" data-utility-tab="scene" aria-controls="panel-scene" aria-selected="false" tabindex="-1" title="Scene" aria-label="Scene">
+<i class="iconoir-sun-light" aria-hidden="true">
 </i>
 </button>
 <button id="tab-render" class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" type="button" role="tab" data-utility-tab="render" aria-controls="panel-render" aria-selected="false" tabindex="-1" title="Render" aria-label="Render">
@@ -44,10 +44,13 @@
 </button>
 </nav>
 <div id="controlBody" class="koke-panel-body">
-<section id="panel-scene" class="koke-utility-panel" role="tabpanel" aria-labelledby="tab-scene" tabindex="0" data-utility-panel="scene" hidden>
-<h2>Scene</h2>
-<section class="koke-section">
-<h3>Object</h3>
+<section id="panel-object" class="koke-utility-panel" role="tabpanel" aria-labelledby="tab-object" tabindex="0" data-utility-panel="object" hidden>
+<div class="koke-object-tabs ds-subtablist" role="tablist" aria-label="Object parts">
+<button id="object-tab-surface" class="ds-subtab" type="button" role="tab" data-object-tab="surface" aria-controls="object-panel-surface" aria-selected="true"><i class="iconoir-cube" aria-hidden="true"></i><span>Surface</span></button>
+<button id="object-tab-moss" class="ds-subtab" type="button" role="tab" data-object-tab="moss" aria-controls="object-panel-moss" aria-selected="false" tabindex="-1"><i class="iconoir-leaf" aria-hidden="true"></i><span>Moss</span></button>
+</div>
+<section id="object-panel-surface" class="koke-object-panel koke-section" role="tabpanel" aria-labelledby="object-tab-surface" data-object-panel="surface">
+<h3>Propagation surface</h3>
 <div class="ds-field">
 <div class="ds-field-row ds-field-row-compact">
 <label class="ds-label" for="surfaceInput">Surface</label>
@@ -66,49 +69,7 @@
 </div>
 </div>
 </section>
-<section class="koke-section">
-<h3>Environment</h3>
-<div class="ds-field">
-<div class="ds-field-row">
-                  <label class="ds-label" for="moistureInput">Moisture</label>
-                  <div class="ds-field-control">
-<input id="moistureInput" type="range" min="0" max="1" step="0.01">
-</div>
-                  <div class="ds-field-actions">
-<output id="moistureValue">
-</output>
-</div>
-                </div>
-</div>
-</section>
-<section class="koke-section">
-<h3>Lighting</h3>
-<div class="ds-field">
-<div class="ds-field-row">
-                <label class="ds-label" for="lightAzimuthInput">Light Azimuth</label>
-                <div class="ds-field-control">
-<input id="lightAzimuthInput" type="range" min="-180" max="180" step="1">
-</div>
-                <div class="ds-field-actions">
-<output id="lightAzimuthValue">
-</output>
-</div>
-              </div>
-<div class="ds-field-row">
-                <label class="ds-label" for="lightElevationInput">Light Elevation</label>
-                <div class="ds-field-control">
-<input id="lightElevationInput" type="range" min="5" max="89" step="1">
-</div>
-                <div class="ds-field-actions">
-<output id="lightElevationValue">
-</output>
-</div>
-              </div>
-</div>
-</section>
-</section>
-<section id="panel-moss" class="koke-utility-panel" role="tabpanel" aria-labelledby="tab-moss" tabindex="0" data-utility-panel="moss" hidden>
-<h2>Moss</h2>
+<section id="object-panel-moss" class="koke-object-panel" role="tabpanel" aria-labelledby="object-tab-moss" data-object-panel="moss" hidden>
 <section class="koke-section">
 <h3>Initial state</h3>
 <div class="ds-toolbar">
@@ -199,6 +160,29 @@
 </div>
 </section>
 <section class="koke-section">
+<h3>Geometry</h3>
+<div class="ds-field">
+<div class="ds-field-row ds-field-row-compact"><label class="ds-label" for="representationInput">Shape</label><select id="representationInput" class="ds-select"><option value="surface">Surface mat</option><option value="triangles">Flat triangles</option><option value="diamonds">Flat diamonds</option><option value="cards">Crossed cards</option><option value="clumps">Low-poly clumps</option><option value="shoots" selected>Detailed shoots</option></select></div>
+<div class="ds-field-row"><label class="ds-label" for="mossDensityInput">Density</label><div class="ds-field-control"><input id="mossDensityInput" type="range" min="0.05" max="1" step="0.05"></div><div class="ds-field-actions"><output id="mossDensityValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="mossScaleInput">Size</label><div class="ds-field-control"><input id="mossScaleInput" type="range" min="0.25" max="2" step="0.05"></div><div class="ds-field-actions"><output id="mossScaleValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="mossAspectInput">Width</label><div class="ds-field-control"><input id="mossAspectInput" type="range" min="0.25" max="2" step="0.05"></div><div class="ds-field-actions"><output id="mossAspectValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="mossOrientationInput">Rotation</label><div class="ds-field-control"><input id="mossOrientationInput" type="range" min="0" max="1" step="0.05"></div><div class="ds-field-actions"><output id="mossOrientationValue"></output></div></div>
+</div>
+</section>
+<section class="koke-section">
+<h3>Color mapping</h3>
+<div class="ds-field">
+<div class="ds-field-row"><label class="ds-label" for="mossRootColorInput">Root</label><input id="mossRootColorInput" type="color" value="#24451f"></div>
+<div class="ds-field-row"><label class="ds-label" for="mossTipColorInput">Tip</label><input id="mossTipColorInput" type="color" value="#a5c950"></div>
+<div class="ds-field-row"><label class="ds-label" for="mossStressColorInput">Stressed</label><input id="mossStressColorInput" type="color" value="#4b2814"></div>
+<div class="ds-field-row ds-field-row-compact"><label class="ds-label" for="mossColorSourceInput">Source</label><select id="mossColorSourceInput" class="ds-select"><option value="uniform">Uniform</option><option value="species">Species</option><option value="health">Health</option><option value="thickness">Thickness</option><option value="moisture">Moisture</option><option value="height">Height</option></select></div>
+<div class="ds-field-row"><label class="ds-label" for="mossColorRangeInput">Range</label><div class="ds-field-control"><input id="mossColorRangeInput" type="range" min="0" max="2" step="0.05"></div><div class="ds-field-actions"><output id="mossColorRangeValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="mossTextureScaleInput">Texture scale</label><div class="ds-field-control"><input id="mossTextureScaleInput" type="range" min="2" max="60" step="1"></div><div class="ds-field-actions"><output id="mossTextureScaleValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="mossTextureStrengthInput">Texture strength</label><div class="ds-field-control"><input id="mossTextureStrengthInput" type="range" min="0" max="1" step="0.05"></div><div class="ds-field-actions"><output id="mossTextureStrengthValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="mossColorInvertInput">Invert</label><div class="ds-field-actions"><label class="ds-switch"><input id="mossColorInvertInput" type="checkbox"><span class="ds-switch-track"></span></label></div></div>
+</div>
+</section>
+<section class="koke-section">
 <h3>Paint</h3>
 <div class="ds-toolbar">
 <button id="paintToggleBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Paint" title="Paint">
@@ -248,8 +232,23 @@
 </div>
 </section>
 </section>
+</section>
+<section id="panel-scene" class="koke-utility-panel" role="tabpanel" aria-labelledby="tab-scene" tabindex="0" data-utility-panel="scene" hidden>
+<section class="koke-section">
+<h3>Environment</h3>
+<div class="ds-field">
+<div class="ds-field-row"><label class="ds-label" for="moistureInput">Moisture</label><div class="ds-field-control"><input id="moistureInput" type="range" min="0" max="1" step="0.01"></div><div class="ds-field-actions"><output id="moistureValue"></output></div></div>
+</div>
+</section>
+<section class="koke-section">
+<h3>Lighting</h3>
+<div class="ds-field">
+<div class="ds-field-row"><label class="ds-label" for="lightAzimuthInput">Azimuth</label><div class="ds-field-control"><input id="lightAzimuthInput" type="range" min="-180" max="180" step="1"></div><div class="ds-field-actions"><output id="lightAzimuthValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="lightElevationInput">Elevation</label><div class="ds-field-control"><input id="lightElevationInput" type="range" min="5" max="89" step="1"></div><div class="ds-field-actions"><output id="lightElevationValue"></output></div></div>
+</div>
+</section>
+</section>
 <section id="panel-render" class="koke-utility-panel" role="tabpanel" aria-labelledby="tab-render" tabindex="0" data-utility-panel="render" hidden>
-<h2>Render</h2>
 <section class="koke-section">
 <h3>Camera</h3>
 <div class="koke-camera-buttons">
@@ -274,19 +273,8 @@
 </div>
 </section>
 <section class="koke-section">
-<h3>Appearance</h3>
+<h3>Quality and effects</h3>
 <div class="ds-field">
-<div class="ds-field-row ds-field-row-compact">
-<label class="ds-label" for="representationInput">Geometry</label>
-<select id="representationInput" class="ds-select">
-<option value="surface">Surface mat</option>
-<option value="triangles">Flat triangles</option>
-<option value="diamonds">Flat diamonds</option>
-<option value="cards">Crossed cards</option>
-<option value="clumps">Low-poly clumps</option>
-<option value="shoots" selected>Detailed shoots</option>
-</select>
-</div>
 <div class="ds-field-row ds-field-row-compact">
 <label class="ds-label" for="detailInput">Detail</label>
 <select id="detailInput" class="ds-select">
@@ -294,10 +282,6 @@
 <option value="low">Low</option>
 </select>
 </div>
-<div class="ds-field-row"><label class="ds-label" for="mossDensityInput">Density</label><div class="ds-field-control"><input id="mossDensityInput" type="range" min="0.05" max="1" step="0.05"></div><div class="ds-field-actions"><output id="mossDensityValue"></output></div></div>
-<div class="ds-field-row"><label class="ds-label" for="mossScaleInput">Size</label><div class="ds-field-control"><input id="mossScaleInput" type="range" min="0.25" max="2" step="0.05"></div><div class="ds-field-actions"><output id="mossScaleValue"></output></div></div>
-<div class="ds-field-row"><label class="ds-label" for="mossAspectInput">Width</label><div class="ds-field-control"><input id="mossAspectInput" type="range" min="0.25" max="2" step="0.05"></div><div class="ds-field-actions"><output id="mossAspectValue"></output></div></div>
-<div class="ds-field-row"><label class="ds-label" for="mossOrientationInput">Rotation</label><div class="ds-field-control"><input id="mossOrientationInput" type="range" min="0" max="1" step="0.05"></div><div class="ds-field-actions"><output id="mossOrientationValue"></output></div></div>
 <div class="ds-field-row">
 <label for="softFocusInput" class="ds-label">Soft focus</label>
 <label class="ds-switch">
@@ -326,22 +310,8 @@
               </div>
 </div>
 </section>
-<section class="koke-section">
-<h3>Color mapping</h3>
-<div class="ds-field">
-<div class="ds-field-row"><label class="ds-label" for="mossRootColorInput">Root</label><input id="mossRootColorInput" type="color" value="#24451f"></div>
-<div class="ds-field-row"><label class="ds-label" for="mossTipColorInput">Tip</label><input id="mossTipColorInput" type="color" value="#a5c950"></div>
-<div class="ds-field-row"><label class="ds-label" for="mossStressColorInput">Stressed</label><input id="mossStressColorInput" type="color" value="#4b2814"></div>
-<div class="ds-field-row ds-field-row-compact"><label class="ds-label" for="mossColorSourceInput">Source</label><select id="mossColorSourceInput" class="ds-select"><option value="uniform">Uniform</option><option value="species">Species</option><option value="health">Health</option><option value="thickness">Thickness</option><option value="moisture">Moisture</option><option value="height">Height</option></select></div>
-<div class="ds-field-row"><label class="ds-label" for="mossColorRangeInput">Range</label><div class="ds-field-control"><input id="mossColorRangeInput" type="range" min="0" max="2" step="0.05"></div><div class="ds-field-actions"><output id="mossColorRangeValue"></output></div></div>
-<div class="ds-field-row"><label class="ds-label" for="mossTextureScaleInput">Texture scale</label><div class="ds-field-control"><input id="mossTextureScaleInput" type="range" min="2" max="60" step="1"></div><div class="ds-field-actions"><output id="mossTextureScaleValue"></output></div></div>
-<div class="ds-field-row"><label class="ds-label" for="mossTextureStrengthInput">Texture strength</label><div class="ds-field-control"><input id="mossTextureStrengthInput" type="range" min="0" max="1" step="0.05"></div><div class="ds-field-actions"><output id="mossTextureStrengthValue"></output></div></div>
-<div class="ds-field-row"><label class="ds-label" for="mossColorInvertInput">Invert</label><div class="ds-field-actions"><label class="ds-switch"><input id="mossColorInvertInput" type="checkbox"><span class="ds-switch-track"></span></label></div></div>
-</div>
-</section>
 </section>
 <section id="panel-export" class="koke-utility-panel" role="tabpanel" aria-labelledby="tab-export" tabindex="0" data-utility-panel="export" hidden>
-<h2>Export</h2>
 <section class="koke-section">
 <h3>Latest capture</h3>
 <article class="ds-snapshot-card">
@@ -371,7 +341,6 @@
 </section>
 </section>
 <section id="panel-settings" class="koke-utility-panel" role="tabpanel" aria-labelledby="tab-settings" tabindex="0" data-utility-panel="settings" hidden>
-<h2>Settings</h2>
 <section class="koke-section">
 <h3>Appearance</h3>
 <div class="ds-field">

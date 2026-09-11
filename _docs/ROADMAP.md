@@ -3,6 +3,8 @@
 ## Current priority - studio workflow
 See [STUDIO_PROPOSAL.md](STUDIO_PROPOSAL.md). Stages 1 and 2 are delivered for visual review: studio shell, built-in primitives, moss representations and mapped color controls. Next: biological moss types, image export, then general surface/model import. Earlier rendering delivery and plans below remain historical context.
 
+The shell hierarchy was refined after review: Object now switches between Surface and Moss child panels, Scene owns external factors, and Render owns camera/quality/effects. Control columns follow Bonsai's right-aligned form rhythm.
+
 ## Delivery update - 2026-09-11
 - Implemented field correctness repairs: finite validated inputs, unified mapping, updated habitats, species preservation, area-weighted statistics, and fixed-time evolution.
 - Implemented layered moss on one rock: basal material, raised cushions, leafy shoots, lighting, and shadows.

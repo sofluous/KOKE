@@ -7,9 +7,16 @@ export async function runStudioChecks() {
   const wait = () => new Promise(resolve => setTimeout(resolve, 200));
   const narrow = innerWidth <= 760;
   check(document.documentElement.scrollWidth === innerWidth, 'no horizontal page overflow');
-  click('tab-moss');
-  check(!el('panel-moss').hidden && el('panel-scene').hidden, 'tabs select one panel');
-  el('tab-moss').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+  click('tab-object');click('object-tab-surface');
+  el('object-tab-surface').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true}));
+  check(document.activeElement===el('object-tab-moss')&&!el('object-panel-moss').hidden&&el('object-panel-surface').hidden,'object child tabs switch parts with keyboard navigation');
+  check(el('surfaceInput').closest('[data-object-panel]')===el('object-panel-surface')&&el('representationInput').closest('[data-object-panel]')===el('object-panel-moss'),'surface and moss controls belong to their object parts');
+  check(el('moistureInput').closest('[data-utility-panel]')===el('panel-scene')&&el('detailInput').closest('[data-utility-panel]')===el('panel-render'),'scene and render controls remain in their own panels');
+  const sliderLefts=Array.from(el('object-panel-moss').querySelectorAll('.ds-field-control input[type="range"]'),input=>Math.round(input.getBoundingClientRect().left));
+  check(Math.max(...sliderLefts)-Math.min(...sliderLefts)<=1,'moss controls share a fixed right-aligned grid');
+  click('tab-scene');
+  check(!el('panel-scene').hidden && el('panel-object').hidden, 'tabs select one panel');
+  el('tab-scene').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
   check(document.activeElement === el('tab-render') && el('tab-render').getAttribute('aria-selected') === 'true', 'keyboard navigation updates focus and selection');
   const rail = document.querySelector('.koke-utility-rail').getBoundingClientRect();
   const button = el('tab-scene').getBoundingClientRect();
@@ -46,7 +53,7 @@ export async function runStudioChecks() {
   }
   click('captureBtn');
   check(el('snapshotThumb').src.startsWith('data:image/png') && !el('panel-export').hidden, 'capture creates image and opens Export');
-  click('maturePresetBtn'); click('tab-scene');
+  click('maturePresetBtn');click('tab-object');click('object-tab-surface');
   if (narrow) click('controlsToggleBtn');
   return { viewport: [innerWidth, innerHeight], passed };
 }

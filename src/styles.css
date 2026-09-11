@@ -15,18 +15,27 @@ body { background: var(--ds-bg); color: var(--ds-text); overflow: hidden; }
 .koke-utility-rail .koke-utility-tab { width: 32px; height: 32px; min-width: 32px; min-height: 32px; padding: 0; flex: 0 0 auto; }
 .koke-utility-tab:last-child { margin-top: auto; }
 .koke-utility-tab.is-active { color: var(--ds-accent); border-color: var(--ds-accent); background: color-mix(in oklab,var(--ds-accent) 14%,var(--ds-bg-raised)); }
-.koke-panel-body { padding: var(--panel-pad); min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable both-edges; }
-.koke-utility-panel { display: grid; gap: 18px; min-width: 0; }
-.koke-utility-panel h2 { font-size: 14px; margin: 0; }
-.koke-section { display: grid; gap: 10px; min-width: 0; }
+.koke-panel-body { padding: var(--panel-pad); min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; }
+#controlBody { padding: 0; overflow: hidden; scrollbar-gutter: auto; }
+#controlBody > .koke-utility-panel { display: grid; gap: 14px; min-width: 0; height: 100%; padding: var(--panel-pad); overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; }
+#controlBody > #panel-object { grid-template-rows: auto minmax(0,1fr); gap: 0; padding: 0; overflow: hidden; scrollbar-gutter: auto; }
+.koke-object-tabs { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0; margin: 0; padding: 0; background: color-mix(in oklab,var(--ds-bg-elevated) 96%,var(--ds-accent) 4%); border: 0; border-bottom: 1px solid color-mix(in oklab,var(--ds-accent) 26%,var(--ds-border)); }
+.koke-object-tabs .ds-subtab { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-width: 0; min-height: 34px; padding: .5rem .2rem; border: 0; border-right: 1px solid color-mix(in oklab,var(--ds-accent) 20%,var(--ds-border)); border-bottom: 2px solid transparent; border-radius: 0; background: transparent; box-shadow: none; color: var(--ds-text-muted); font-size: .66rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.koke-object-tabs .ds-subtab:last-child { border-right: 0; }
+.koke-object-tabs .ds-subtab[aria-selected="true"] { color: var(--ds-tab-active-fg); border-bottom-color: var(--ds-tab-active-border); background: var(--ds-tab-active-bg); }
+.koke-object-panel { display: grid; align-content: start; gap: 14px; min-width: 0; min-height: 0; padding: var(--panel-pad); overflow-y: auto; overflow-x: hidden; scrollbar-gutter: stable; }
+.koke-section { display: grid; gap: 8px; min-width: 0; }
 .koke-section h3 { margin: 0; font-size: 11px; color: var(--ds-text-muted); text-transform: uppercase; letter-spacing: .08em; }
 .koke-context { margin: 0; font-size: 13px; }
-.koke-panel-body .ds-field { display: grid; gap: 10px; }
-.koke-panel-body .ds-field-row { min-width: 0; gap: 6px; }
-.koke-panel-body .ds-field-row-compact { grid-template-columns: 70px minmax(0,1fr); }
+.koke-panel-body .ds-field { display: grid; gap: 6px; }
+.koke-panel-body .ds-field-row { grid-template-columns: minmax(0,1fr) 96px 40px; min-width: 0; gap: 6px; }
+.koke-panel-body .ds-field-row-compact { grid-template-columns: minmax(0,1fr) 132px; }
 .koke-panel-body .ds-label { font-size: 11px; }
 .koke-panel-body .ds-select { min-width: 0; max-width: 100%; font-size: 12px; padding-left: 8px; padding-right: 20px; }
-.ds-field-actions output { font-family: var(--ds-font-mono); font-size: 11px; color: var(--ds-text-muted); }
+.koke-panel-body .ds-field-control input[type="range"] { width: 100%; }
+.koke-panel-body .ds-field-row > :is(.ds-switch,input[type="color"]) { grid-column: 2 / 4; justify-self: end; }
+.koke-panel-body .ds-field-row > .ds-field-actions:nth-child(2):last-child { grid-column: 2 / 4; justify-self: end; }
+.ds-field-actions output { width: 100%; text-align: right; font-family: var(--ds-font-mono); font-size: 11px; color: var(--ds-text-muted); }
 .koke-camera-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .koke-stage { display: grid; grid-template-rows: minmax(0,1fr) auto; gap: 8px; min-width: 0; min-height: 0; }
 .koke-viewport-wrap { position: relative; overflow: hidden; background: #171e23; }

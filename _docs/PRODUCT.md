@@ -1,7 +1,7 @@
 # PRODUCT
 
 ## Studio organization decision - 2026-09-11
-Adopt a left rail/control panel, central viewport with transport below it, and right observation panel. Group Scene, Moss, Render, Export and Settings consistently with the related app projects. The [studio proposal](STUDIO_PROPOSAL.md) records the full future pipeline. Panel operations and display preferences preserve simulation state. Transport is elapsed-time playback, not arbitrary timeline seeking.
+Adopt a left rail/control panel, central viewport with transport below it, and right observation panel. The top-level groups are Object, Scene, Render, Export and Settings. Object follows Bonsai's part-switch pattern with Surface and Moss child tabs: propagation-surface controls stay under Surface, while moss growth, geometry, color and painting stay under Moss. Scene owns external factors such as environment and lighting; Render owns camera, quality and view effects. Panel operations and display preferences preserve simulation state. Transport is elapsed-time playback, not arbitrary timeline seeking. See [the studio proposal](STUDIO_PROPOSAL.md) for the wider pipeline.
 
 ## Appearance controls - 2026-09-11
 Rock, Sphere and Icosahedron are selectable built-in radial surfaces. The renderer offers a continuous mat, triangle, diamond, crossed-card, low-poly clump and detailed-shoot representations with independent density and proportions. Root/tip/stressed palettes can map species, health, thickness, moisture or height. These are render decisions and preserve biological field state. Surface changes also preserve that UV field but rebuild surface-dependent habitat and clear world-space spores.

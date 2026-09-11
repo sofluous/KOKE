@@ -1,6 +1,9 @@
 # CHANGELOG
 
 ## 2026-09-11 - studio workflow
+- Matched Bonsai's connected Object selector: Surface/Moss now form a flush full-width strip outside the scrolling controls. Removed redundant top-level panel-name headings while retaining rail tooltips and accessible labels.
+- Refined the studio hierarchy around a top-level Object panel with Surface and Moss child tabs, following Bonsai's plant/vessel pattern. Moved external moisture/lighting to Scene and camera/quality/effects to Render.
+- Consolidated moss growth, geometry, color mapping and painting under the Moss child panel. Added keyboard navigation for child tabs and fixed right-aligned form columns so control positions no longer depend on label length.
 - Recorded the reviewed cross-project UI/model/render/export proposal in `STUDIO_PROPOSAL.md`, indexed it, and added Stage 1 acceptance checks and product/roadmap decisions.
 - Delivered the compact left control rail, right Observation panel, Scene/Moss/Render/Export/Settings organization, balanced insets, collapsible panels and responsive drawers.
 - Moved playback and capture below the viewport; added fixed-tick stepping, selected-preset restart, elapsed time and accurate fractional speed labels. Canvas/camera/effects resize when panels change.
