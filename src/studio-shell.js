@@ -4,6 +4,7 @@ export function createStudioShell() {
   const observation = document.getElementById('observationPanel');
   const tabs = Array.from(document.querySelectorAll('[data-utility-tab]'));
   const panels = Array.from(document.querySelectorAll('[data-utility-panel]'));
+  const toolPanels = Array.from(document.querySelectorAll('[data-tool-panel]'));
   const objectTabs = Array.from(document.querySelectorAll('[data-object-tab]'));
   const objectPanels = Array.from(document.querySelectorAll('[data-object-panel]'));
   const controlsButton = document.getElementById('controlsToggleBtn');
@@ -48,7 +49,15 @@ export function createStudioShell() {
       tab.tabIndex = active ? 0 : -1;
     });
     panels.forEach(panel => { panel.hidden = panel.dataset.utilityPanel !== next; });
+    toolPanels.forEach(panel=>{panel.hidden=true;});
     if (open) showControls(true);
+  }
+  function setToolPanel(name) {
+    const found=toolPanels.some(panel=>panel.dataset.toolPanel===name);if(!found)return;
+    panels.forEach(panel=>{panel.hidden=true;});
+    toolPanels.forEach(panel=>{panel.hidden=panel.dataset.toolPanel!==name;});
+    tabs.forEach(tab=>{tab.classList.remove('is-active');tab.setAttribute('aria-selected','false');});
+    showControls(true);
   }
   function setObjectTab(name) {
     const next=objectTabs.some(tab=>tab.dataset.objectTab===name)?name:'surface';
@@ -94,5 +103,5 @@ export function createStudioShell() {
   small.addEventListener('change', () => showControls(!small.matches));
   medium.addEventListener('change', () => showObservation(!medium.matches));
   setObjectTab('surface');setTab('object', false); sync();
-  return { setTab, setObjectTab };
+  return { setTab, setObjectTab, setToolPanel };
 }

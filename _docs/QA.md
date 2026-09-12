@@ -1,5 +1,25 @@
 # QA
 
+## Pointer and progressive-renderer verification - 2026-09-12
+Production syntax checks and all 28 tests pass. The new interaction test verifies that left mouse is unassigned from OrbitControls, middle maps to pan, right maps to orbit, and the context menu is suppressed. Existing field and renderer-facing regressions continue to pass.
+
+Low startup quality now creates 30,000 shoot slots and High detail expands to 60,000 only when a visible triangle/card/shoot representation needs them. Anchor placement remains stratified but adds deterministic session-seeded angular and radial variation. Browser gesture feel, visual distribution and allocation timing remain for hands-on Chrome review; no browser automation was run.
+
+## Studio Stage 5 surface verification - 2026-09-12
+Production syntax checks and all 27 numerical, spore, export and surface tests pass. New tests cover all six built-in samplers, finite normalized output, seed-stable and seed-varying rock deformation, closed radial triangle conversion and rejection of open geometry. Static UI checks found no duplicate IDs or stale Paint-toggle/Erase-checkbox selectors.
+
+GLB loading is limited to self-contained files with at most 10,000 triangles and at least 98% directional coverage after centering. Radial lookup construction is bounded and occurs only during import. Browser-side GLB decoding, shader compilation for the new substrate modes, rail placement and real imported-model painting remain for hands-on Chrome review; no browser automation was run.
+
+## Studio Stage 4 and initialization verification - 2026-09-12
+Production syntax checks and all 25 numerical, spore and export-setting tests pass. New checks cover deterministic same-seed initialization, different spatial fields from different seeds, unsigned seed validation, exact export settings, alpha-format rules, compression bounds, GPU dimension limits and total-pixel limits.
+
+The startup scene is configured directly as a paused low-detail Sphere with Surface mat rendering; it no longer constructs the high-detail Rock as its initial propagation mesh. Paused rendering is capped at 15 fps and returns to the normal animation cadence during playback. Browser image encoding, transparent postprocessing and GPU-specific maximum output behavior remain for hands-on Chrome review. No browser automation was run in this delivery, following the preference to avoid costly visual checks unless needed.
+
+## Studio Stage 3 verification - 2026-09-11
+Production syntax checks and all 22 numerical/spore tests pass. New focused checks verify that a selected-type reset seeds only that lineage and that conversion preserves coverage, biomass, age, stress and dormant reserves while moving lineage data. Invalid type identifiers are rejected.
+
+The panel layout change was reviewed at source level, following the user's preference for lightweight validation of minor visual work. Utility panels and Object child forms explicitly align content to the top with fixed gaps. No browser automation was run for this delivery; any future interactive check should use Chrome.
+
 ## Control organization verification - 2026-09-11
 The focused studio browser check passes 18 desktop assertions and 21 narrow-screen assertions with no browser errors. Coverage includes keyboard-accessible Object child tabs, correct Surface/Moss/Scene/Render ownership, a common right-aligned slider axis, top-level keyboard navigation, responsive drawers, transport access and capture routing. Visually reviewed [Object / Surface](data/ui-refactor-object-surface.png) and [Object / Moss](data/ui-refactor-object-moss.png). No simulation or rendering behavior changed.
 

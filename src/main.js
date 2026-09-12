@@ -1,12 +1,14 @@
 import { createScene, createSurfaceGeometry, directionFromAngles, handleResize } from "./scene.js";
 import { mossSpeciesCatalog } from "./simulation.js";
-import { sampleRock, surfaceCatalog } from './substrate.js';
+import { createSurfaceSampler, surfaceCatalog } from './substrate.js';
 import { SporeSimulation } from './spores.js';
 import { createViewEffects } from './view-effects.js';
 import { FieldSimulation, defaultFieldEnvironment } from "./field-sim.js";
 import { createFieldRenderer } from "./field-renderer.js";
 import { createUI } from "./ui.js";
 import { createDiagnostics } from "./debug.js";
+import { normalizeExportSettings } from './export-image.js';
+import { importRadialGlb } from './model-import.js';
 
 const canvas = document.getElementById("viewport");
 const viewportWrap = document.getElementById("viewportWrap");
@@ -15,7 +17,24 @@ const snapshotThumb = document.getElementById("snapshotThumb");
 const snapshotTitle = document.getElementById("snapshotTitle");
 const snapshotMeta = document.getElementById("snapshotMeta");
 
-const { scene, camera, renderer, controls, lights, meshGeometry, THREE } = createScene(canvas);
+function createStartupSeed() {
+  const raw=new URLSearchParams(window.location.search).get('seed');
+  const requested=raw===null?NaN:Number(raw);
+  if(Number.isInteger(requested)&&requested>=0&&requested<=0xffffffff)return requested;
+  if(globalThis.crypto?.getRandomValues)return crypto.getRandomValues(new Uint32Array(1))[0];
+  return (Date.now()^Math.floor(performance.now()*1000))>>>0;
+}
+
+const startupSeed=createStartupSeed();
+const startupSurface='sphere';
+const startupSurfaceDetail='low';
+const startupRepresentation='surface';
+const startupRenderDetail='low';
+const startupDefinition=surfaceCatalog[startupSurface];
+const { scene, camera, renderer, controls, lights, floor, meshGeometry, THREE } = createScene(canvas, {
+  sampleSurface:startupDefinition.sample,
+  surfaceDetail:startupSurfaceDetail,
+});
 const effects = createViewEffects(renderer, scene, camera, controls);
 
 const initialLightAzimuth = 18;
@@ -23,20 +42,30 @@ const initialLightElevation = 54;
 const lightDir = directionFromAngles(initialLightAzimuth, initialLightElevation);
 lights.sun.position.copy(lightDir.clone().multiplyScalar(8));
 
-const surface = { sampleSurface: sampleRock };
+const surface = { sampleSurface: startupDefinition.sample };
 const simulation = new FieldSimulation(surface, {
   environment: defaultFieldEnvironment,
   speciesCatalog: mossSpeciesCatalog,
   lightDirection: { x: lightDir.x, y: lightDir.y, z: lightDir.z },
   mapSize: 128,
+  initialSpeciesId: 0,
+  seed:startupSeed,
 });
 
 const speciesCatalog = simulation.getSpeciesCatalog();
 const mossRenderer = createFieldRenderer(THREE, scene, meshGeometry, {
   speciesPalette: speciesCatalog.map((species) => species.color),
   coverageMapSize: simulation.mapSize,
-  sampleSurface: sampleRock,
+  sampleSurface: startupDefinition.sample,
+  seed:startupSeed,
+  initialQuality:startupRenderDetail,
+  initialRepresentation:startupRepresentation,
+  initialDensity:0.5,
 });
+mossRenderer.setQuality(startupRenderDetail);
+mossRenderer.setRepresentation(startupRepresentation);
+mossRenderer.setDensity(0.5);
+mossRenderer.setSurfaceAppearance({baseColor:'#252c2e',accentColor:'#586063',texture:'cracked',textureScale:14,textureStrength:0.7,roughness:0.88});
 const spores = new SporeSimulation(simulation);
 simulation.onStep = (dt) => spores.step(dt);
 mossRenderer.setCoverage(simulation.fillCoverageMap());
@@ -58,11 +87,18 @@ const ui = createUI(
     playbackSpeed: 1,
     softFocus: false,
     dew: false,
-    detail: 'high',
-    surface: 'rock',
-    surfaceDetail: 'high',
-    representation: 'shoots',
-    mossDensity: 1,
+    detail: startupRenderDetail,
+    surface: startupSurface,
+    surfaceDetail: startupSurfaceDetail,
+    surfaceDeformity:0.55,
+    surfaceBaseColor:'#252c2e',
+    surfaceAccentColor:'#586063',
+    surfaceTexture:'cracked',
+    surfaceTextureScale:14,
+    surfaceTextureStrength:0.7,
+    surfaceRoughness:0.88,
+    representation: startupRepresentation,
+    mossDensity: 0.5,
     mossScale: 1,
     mossAspect: 1,
     mossOrientation: 1,
@@ -74,6 +110,7 @@ const ui = createUI(
     mossColorInvert: false,
     mossTextureScale: 18,
     mossTextureStrength: 0.22,
+    mossTypeId: 0,
     lightAzimuth: initialLightAzimuth,
     lightElevation: initialLightElevation,
     wireframe: false,
@@ -83,6 +120,16 @@ const ui = createUI(
     paintSpeciesId: 0,
     paintErase: false,
     speciesCatalog,
+    seed:startupSeed,
+    exportPreset:'hd',
+    exportWidth:1920,
+    exportHeight:1080,
+    exportAspectLock:true,
+    exportFormat:'png',
+    exportQuality:0.92,
+    exportTransparent:false,
+    exportDetail:'current',
+    exportEffects:true,
   },
   {
     onPlayToggle(playing, source = "ui") {
@@ -101,7 +148,7 @@ const ui = createUI(
       simulation.setRunning(false);
       ui.setPlaying(false);
       ui.setInitialState(mode);
-      simulation.reset(mode);
+      simulation.reset(mode,ui.state.mossTypeId);
       spores.reset();
       ui.setTime(0);
       mossRenderer.setCoverage(simulation.fillCoverageMap());
@@ -120,12 +167,39 @@ const ui = createUI(
       if(key==='detail') mossRenderer.setQuality(value);
     },
     onSurface(key) { applySurface(key,ui.state.surfaceDetail); },
-    onSurfaceDetail(detail) { applySurface(ui.state.surface,detail); },
+    onSurfaceDetail(detail) { if(ui.state.surface!=='imported')applySurface(ui.state.surface,detail); },
+    onSurfaceDeformity() { if(ui.state.surface==='rock'||ui.state.surface==='faceted-rock')applySurface(ui.state.surface,ui.state.surfaceDetail); },
+    onSurfaceAppearance(key,value) {
+      mossRenderer.setSurfaceAppearance({[key]:value});
+      diagnostics?.pushLog(`Surface material changed: ${key}=${value}.`);
+    },
+    async onImportSurface(file) {
+      const result=await importRadialGlb(THREE,file);importedSurface?.geometry.dispose();importedSurface=result;
+      simulation.setRunning(false);ui.setPlaying(false);spores.reset();
+      simulation.setSurface(result.sample);mossRenderer.setSurface(result.sample,result.geometry.clone());mossRenderer.setCoverage(simulation.fillCoverageMap());
+      ui.state.surface='imported';diagnostics?.pushLog(`Imported radial GLB: ${result.name} (${result.triangleCount} triangles).`);
+      return result;
+    },
     onAppearance(key,value) {
       if(key==='representation')mossRenderer.setRepresentation(value);
       else if(key==='density')mossRenderer.setDensity(value);
       else mossRenderer.setAppearance({[key]:value});
       diagnostics?.pushLog(`Appearance changed: ${key}=${value}.`);
+    },
+    onMossTypeSelect(speciesId) {
+      ui.state.paintSpeciesId=speciesId;
+      diagnostics?.pushLog(`New growth type: ${speciesCatalog[speciesId]?.name||speciesId}.`);
+    },
+    onApplyMossType(mode,speciesId) {
+      simulation.setRunning(false);ui.setPlaying(false);spores.reset();
+      if(mode==='convert'){
+        const converted=simulation.convertSpecies(speciesId);
+        diagnostics?.pushLog(`Converted ${converted} colonies to ${speciesCatalog[speciesId].name}; biomass and age preserved.`);
+      }else{
+        simulation.reset('seed',speciesId);ui.setInitialState('seed');ui.setTime(0);
+        diagnostics?.pushLog(`Scene reseeded with ${speciesCatalog[speciesId].name}.`);
+      }
+      mossRenderer.setCoverage(simulation.fillCoverageMap());
     },
     onPaintToggle(enabled) {
       canvas.classList.toggle("is-paint-mode", enabled);
@@ -153,8 +227,11 @@ const ui = createUI(
       captureSnapshot(false);
       ui.setUtilityTab("export");
     },
-    onExportPng() {
-      captureSnapshot(true);
+    getViewportSize() {
+      return {width:Math.max(1,canvas.clientWidth),height:Math.max(1,canvas.clientHeight)};
+    },
+    onExportImage(settings) {
+      exportImage(settings);
       ui.setUtilityTab("export");
     },
     onExportReport() {
@@ -175,14 +252,21 @@ diagnostics = createDiagnostics({
   spores,
   renderer,
 });
-diagnostics.pushLog("Simulation ready. Press Play to begin.");
+diagnostics.pushLog(`Simulation ready with seed ${startupSeed}. Press Play to begin.`);
 
+let importedSurface=null;
 function applySurface(key,detail) {
+  if(key==='imported'&&importedSurface){
+    simulation.setRunning(false);ui.setPlaying(false);simulation.setSurface(importedSurface.sample);spores.reset();
+    mossRenderer.setSurface(importedSurface.sample,importedSurface.geometry.clone());mossRenderer.setCoverage(simulation.fillCoverageMap());
+    diagnostics?.pushLog(`Surface changed: ${importedSurface.name}. Growth field preserved; spores cleared.`);return;
+  }
   const definition=surfaceCatalog[key]||surfaceCatalog.rock;
+  const sample=createSurfaceSampler(key,{seed:startupSeed,deformity:ui.state.surfaceDeformity});
   simulation.setRunning(false);ui.setPlaying(false);
-  simulation.setSurface(definition.sample);
+  simulation.setSurface(sample);
   spores.reset();
-  mossRenderer.setSurface(definition.sample,createSurfaceGeometry(definition.sample,detail,key==='icosahedron'));
+  mossRenderer.setSurface(sample,createSurfaceGeometry(sample,detail,Boolean(definition.faceted)||key==='icosahedron'));
   mossRenderer.setCoverage(simulation.fillCoverageMap());
   diagnostics?.pushLog(`Surface changed: ${definition.name} (${detail}). Growth field preserved; spores cleared.`);
 }
@@ -331,6 +415,60 @@ function downloadDataUrl(name, dataUrl) {
   a.click();
 }
 
+function canvasToBlob(type,quality) {
+  return new Promise((resolve,reject)=>renderer.domElement.toBlob(blob=>blob?resolve(blob):reject(new Error('Image encoding failed')),type,quality));
+}
+
+function downloadBlob(name,blob) {
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=name;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),0);
+}
+
+let snapshotObjectUrl=null;
+function showBlobPreview(blob,settings) {
+  if(snapshotObjectUrl)URL.revokeObjectURL(snapshotObjectUrl);
+  snapshotObjectUrl=URL.createObjectURL(blob);
+  if(snapshotThumb)snapshotThumb.src=snapshotObjectUrl;
+  if(snapshotTitle)snapshotTitle.textContent=`${settings.width} × ${settings.height} ${settings.format.toUpperCase()}`;
+  if(snapshotMeta)snapshotMeta.textContent=new Date().toLocaleString();
+}
+
+let exportInProgress=false;
+async function exportImage(input) {
+  if(exportInProgress)return;
+  exportInProgress=true;
+  const requested=input.preset==='viewport'?{...input,width:canvas.clientWidth,height:canvas.clientHeight}:input;
+  const settings=normalizeExportSettings(requested,{maxDimension:renderer.capabilities.maxTextureSize,maxPixels:33_177_600});
+  const previous={
+    running:simulation.running,pixelRatio:renderer.getPixelRatio(),aspect:camera.aspect,
+    background:scene.background,fog:scene.fog,floorVisible:floor.visible,clearAlpha:renderer.getClearAlpha(),
+    effects:effects.isEnabled(),detail:ui.state.detail,dew:ui.state.dew,
+  };
+  simulation.setRunning(false);ui.setPlaying(false);
+  try {
+    if(settings.detail!=='current')mossRenderer.setQuality(settings.detail);
+    if(!settings.effects){effects.setEnabled(false);mossRenderer.setDew(false);}
+    if(settings.transparent){scene.background=null;scene.fog=null;floor.visible=false;renderer.setClearAlpha(0);}
+    renderer.setPixelRatio(1);renderer.setSize(settings.width,settings.height,false);
+    camera.aspect=settings.width/settings.height;camera.updateProjectionMatrix();effects.resize(settings.width,settings.height);
+    if(simulation.dirty)mossRenderer.setCoverage(simulation.fillCoverageMap());
+    mossRenderer.update(simulation.time,spores);effects.render();
+    const blob=await canvasToBlob(settings.mimeType,settings.quality);
+    showBlobPreview(blob,settings);
+    downloadBlob(`koke-${startupSeed}-${Date.now()}.${settings.extension}`,blob);
+    diagnostics?.pushLog(`Image exported: ${settings.width}x${settings.height} ${settings.format.toUpperCase()}${settings.transparent?' alpha':''}.`);
+  } catch(error) {
+    diagnostics?.pushLog(`Image export failed: ${error.message}.`);
+    console.error(error);
+  } finally {
+    scene.background=previous.background;scene.fog=previous.fog;floor.visible=previous.floorVisible;renderer.setClearAlpha(previous.clearAlpha);
+    renderer.setPixelRatio(previous.pixelRatio);handleResize(renderer,camera,canvas);camera.aspect=previous.aspect;camera.updateProjectionMatrix();effects.resize(canvas.clientWidth,canvas.clientHeight);
+    effects.setEnabled(previous.effects);mossRenderer.setQuality(previous.detail);mossRenderer.setDew(previous.dew);
+    simulation.setRunning(previous.running);ui.setPlaying(previous.running);exportInProgress=false;
+  }
+}
+
 function captureSnapshot(download) {
   if (simulation.dirty) mossRenderer.setCoverage(simulation.fillCoverageMap());
   mossRenderer.update(simulation.time, spores);
@@ -367,8 +505,14 @@ viewportObserver.observe(viewportWrap);
 resizeViewport();
 
 let lastFrameTime = performance.now();
+let lastIdleFrame = 0;
 function animate() {
   const now = performance.now();
+  if (!simulation.running && !isPainting && now-lastIdleFrame<1000/15) {
+    requestAnimationFrame(animate);
+    return;
+  }
+  if (!simulation.running) lastIdleFrame=now;
   const frameMs = now - lastFrameTime;
   lastFrameTime = now;
 

@@ -1,18 +1,49 @@
 import { FieldSimulation } from '../src/field-sim.js';
-import { sampleIcosahedron, sampleRock, sampleSphere, surfaceCatalog } from '../src/substrate.js';
+import { createSurfaceSampler, sampleIcosahedron, sampleRock, sampleSphere, surfaceCatalog } from '../src/substrate.js';
+import { createRadialSurface } from '../src/radial-surface.js';
 import assert from 'node:assert/strict';
 const make = (options = {}) => new FieldSimulation({ sampleSurface: sampleSphere }, { mapSize: 16, ...options });
 const run = (name, fn) => { fn(); console.log('PASS ' + name); };
 run('built-in surface samplers remain finite and normalized',()=>{
-  assert.deepEqual(Object.keys(surfaceCatalog),['rock','sphere','icosahedron']);
-  for(const sample of [sampleRock,sampleSphere,sampleIcosahedron])for(const [u,v] of [[0,0.5],[0.25,0.75],[0.99,0.02]]){
+  assert.deepEqual(Object.keys(surfaceCatalog),['rock','faceted-rock','sphere','ellipsoid','rounded-cube','icosahedron']);
+  for(const sample of [sampleRock,sampleSphere,sampleIcosahedron,createSurfaceSampler('ellipsoid'),createSurfaceSampler('rounded-cube')])for(const [u,v] of [[0,0.5],[0.25,0.75],[0.99,0.02]]){
     const p=sample(u,v),n=p.normal;assert.ok([p.x,p.y,p.z,n.x,n.y,n.z,p.heightNorm].every(Number.isFinite));
     assert.ok(Math.abs(Math.hypot(n.x,n.y,n.z)-1)<1e-6);
   }
 });
+run('seeded rock deformity is reproducible and changes between seeds',()=>{
+  const a=createSurfaceSampler('faceted-rock',{seed:12,deformity:0.8}),b=createSurfaceSampler('faceted-rock',{seed:12,deformity:0.8}),c=createSurfaceSampler('faceted-rock',{seed:13,deformity:0.8});
+  assert.deepEqual(a(0.31,0.62),b(0.31,0.62));assert.notDeepEqual(a(0.31,0.62),c(0.31,0.62));
+});
+run('closed radial triangle surfaces produce finite samples and reject open meshes',()=>{
+  const top=[0,1,0],bottom=[0,-1,0],east=[1,0,0],west=[-1,0,0],front=[0,0,1],back=[0,0,-1];
+  const faces=[[top,east,front],[top,front,west],[top,west,back],[top,back,east],[bottom,front,east],[bottom,west,front],[bottom,back,west],[bottom,east,back]];
+  const positions=new Float32Array(faces.flat(2)),radial=createRadialSurface(positions,{width:16,height:8,minCoverage:0.95});
+  const sample=radial.sample(0.2,0.7);assert.ok([sample.x,sample.y,sample.z,sample.normal.x,sample.normal.y,sample.normal.z].every(Number.isFinite));
+  assert.throws(()=>createRadialSurface(new Float32Array([0,1,0,1,0,0,0,0,1]),{width:8,height:8,minCoverage:0.5}));
+});
 run('surface replacement preserves the growth field and rebuilds positions',()=>{
   const f=make(),field=f.channelsA.slice(),before=f.positions.slice();f.setSurface(sampleIcosahedron);
   assert.deepEqual(f.channelsA,field);assert.notDeepEqual(f.positions,before);assert.equal(f.dirty,true);
+});
+run('initialization seed is repeatable within a session and varied across seeds',()=>{
+  const a=make({seed:123}),b=make({seed:123}),c=make({seed:456});
+  assert.deepEqual(a.channelsA,b.channelsA);assert.deepEqual(a.capacityMap,b.capacityMap);
+  assert.notDeepEqual(a.channelsA,c.channelsA);assert.notDeepEqual(a.capacityMap,c.capacityMap);
+  assert.throws(()=>make({seed:-1}));assert.throws(()=>make({seed:2**32}));
+});
+run('single-type resets seed only the selected biological channel',()=>{
+  const f=make({initialState:'bare'});f.reset('mature',2);
+  assert.ok(f.channelsA.some((value,index)=>index%4===2&&value>0));
+  for(let i=0;i<f.cellCount;i++){assert.equal(f.channelsA[i*4],0);assert.equal(f.channelsA[i*4+1],0);}
+  assert.throws(()=>f.reset('seed',3));
+});
+run('type conversion preserves biomass age stress and total coverage',()=>{
+  const f=make(),coverage=Array.from({length:f.cellCount},(_,i)=>f.channelsA[i*4]+f.channelsA[i*4+1]+f.channelsA[i*4+2]);
+  f.dormantMap[1]=0.2;const mass=f.massMap.slice(),age=f.ageMap.slice(),stress=f.stressMap.slice();
+  assert.ok(f.convertSpecies(1)>0);
+  for(let i=0;i<f.cellCount;i++){assert.equal(f.channelsA[i*4],0);assert.equal(f.channelsA[i*4+2],0);assert.ok(Math.abs(f.channelsA[i*4+1]-coverage[i])<1e-6);assert.equal(f.dormantMap[i*3],0);assert.equal(f.dormantMap[i*3+2],0);}
+  assert.deepEqual(f.massMap,mass);assert.deepEqual(f.ageMap,age);assert.deepEqual(f.stressMap,stress);assert.throws(()=>f.convertSpecies(-1));
 });
 run('active defaults remain finite through long evolution', () => {
   const f = make(); for (let i = 0; i < 2400; i++) f.stepBatch();

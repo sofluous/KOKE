@@ -7,6 +7,7 @@ export function createViewEffects(renderer, scene, camera, controls) {
   let composer, bokeh;
   let enabled = false;
   return {
+    isEnabled() { return enabled; },
     setEnabled(value) {
       enabled = Boolean(value);
       if (enabled && !composer) {

@@ -1,9 +1,17 @@
 # ROADMAP
 
 ## Current priority - studio workflow
-See [STUDIO_PROPOSAL.md](STUDIO_PROPOSAL.md). Stages 1 and 2 are delivered for visual review: studio shell, built-in primitives, moss representations and mapped color controls. Next: biological moss types, image export, then general surface/model import. Earlier rendering delivery and plans below remain historical context.
+See [STUDIO_PROPOSAL.md](STUDIO_PROPOSAL.md). Stages 1 through 5 are delivered for visual review: studio shell, expanded built-in and imported radial surfaces, moss representations, mapped color controls, biological moss profiles, and configurable still-image export. Next work should focus on organic tuning and measured performance, followed by a topology-general surface graph if folded or porous model support is required. Earlier rendering delivery and plans below remain historical context.
 
 The shell hierarchy was refined after review: Object now switches between Surface and Moss child panels, Scene owns external factors, and Render owns camera/quality/effects. Control columns follow Bonsai's right-aligned form rhythm.
+
+Panel forms are top anchored and retain consistent gaps regardless of content length. Cushion, Sheet and Feather types now affect simulation and renderer traits; selection applies to painting and starts, while existing colonies require an explicit conversion or reseed.
+
+Initialization now defaults to a paused low-detail Sphere and Surface mat. Each launch has a random session seed, with URL seed replay available. Image export provides exact dimensions, common presets, PNG/JPEG/WebP, alpha where supported, quality, detail and effect controls while restoring live state after capture.
+
+Surface delivery now includes six built-ins, seeded rock deformity, procedural material controls and validated GLB import for closed star-shaped meshes up to 10,000 triangles. Brush and Eraser moved to a centered rail tool group with a dedicated temporary settings panel. General folded/disconnected topology remains deferred because it requires triangle adjacency, non-radial painting and attachment data rather than the current spherical field.
+
+Pointer mapping is now fixed across every tool: left interaction, middle pan/track, right orbit and wheel zoom. The first organic/performance pass adds session-seeded anchor jitter and progressive 30,000-to-60,000 shoot allocation. Further work should measure GPU overdraw on target hardware and tune colony-scale variation from visual review.
 
 ## Delivery update - 2026-09-11
 - Implemented field correctness repairs: finite validated inputs, unified mapping, updated habitats, species preservation, area-weighted statistics, and fixed-time evolution.

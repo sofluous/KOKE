@@ -1,13 +1,37 @@
 # PRODUCT
 
+## Pointer interaction and organic placement - 2026-09-12
+Pointer behavior is invariant across tool state: left drag belongs only to the active interaction tool, middle drag pans/tracks, right drag orbits, and the wheel zooms in or out. The viewport suppresses the browser context menu so right-orbit remains uninterrupted. Brush and Eraser therefore cannot accidentally hand a left stroke to camera rotation.
+
+Low-detail startup allocates capacity for 30,000 shoot instances and uses a lightweight placeholder while Surface mat is active. The renderer expands to the 60,000-instance High tier only when a visible geometric moss representation requests it. Plant and dew anchors use session-seeded stratified jitter, retaining broad surface coverage while reducing regular Fibonacci patterns between colonies.
+
+## Surface workflow and painting tools - 2026-09-12
+The propagation surface now includes Rock, Faceted Rock, Sphere, Ellipsoid, Rounded Cube and Icosahedron. Rock shapes use the launch seed and a Deformity control, so repeated sessions produce different but reproducible forms. Faceted geometry uses a deliberately smaller tessellation budget for a stronger polygonal silhouette and lower draw cost.
+
+Surface material controls provide base/accent colors, Smooth, Fine grain, Layered, Cracked stone and Speckled procedural textures, texture scale and variation, and roughness. These change rendering without resetting biology.
+
+Self-contained GLB import supports closed, star-shaped meshes up to 10,000 triangles. Imported geometry is centered, normalized and converted to a cached radial lookup used consistently by growth, painting, plant placement and spore attachment. Models that are open, porous, folded around themselves, disconnected, or do not enclose the normalized origin are rejected because the current radial field cannot represent their topology safely.
+
+Brush and Eraser are persistent tools centered in the left rail. Their dedicated temporary tool panel owns radius and strength; painting controls no longer appear inside the Moss object panel.
+
+## Lightweight initialization and image export - 2026-09-12
+KOKE starts paused on a low-detail Sphere using the continuous Surface mat and Low render detail. Paused rendering is capped at 15 fps, while active simulation retains the normal animation cadence. This keeps the initial draw path small while preserving Rock, richer geometry representations and High detail as deliberate choices. Each launch creates an unsigned 32-bit seed that changes initial colony placement, habitat capacity and lifecycle variation. Restart retains the session seed for reproducibility; adding `?seed=<number>` to the URL recreates a specific initialization.
+
+Still-image export supports Viewport, 1920 x 1080, 2048 x 2048, 3840 x 2160 and custom dimensions; aspect locking; PNG, JPEG and WebP; supported transparency; compression quality; render detail; and optional view effects. Export freezes simulation time, renders at the requested pixel dimensions, validates against GPU and pixel limits, then restores the live viewport, camera, quality, effects and playback state.
+
 ## Studio organization decision - 2026-09-11
 Adopt a left rail/control panel, central viewport with transport below it, and right observation panel. The top-level groups are Object, Scene, Render, Export and Settings. Object follows Bonsai's part-switch pattern with Surface and Moss child tabs: propagation-surface controls stay under Surface, while moss growth, geometry, color and painting stay under Moss. Scene owns external factors such as environment and lighting; Render owns camera, quality and view effects. Panel operations and display preferences preserve simulation state. Transport is elapsed-time playback, not arbitrary timeline seeking. See [the studio proposal](STUDIO_PROPOSAL.md) for the wider pipeline.
 
 ## Appearance controls - 2026-09-11
 Rock, Sphere and Icosahedron are selectable built-in radial surfaces. The renderer offers a continuous mat, triangle, diamond, crossed-card, low-poly clump and detailed-shoot representations with independent density and proportions. Root/tip/stressed palettes can map species, health, thickness, moisture or height. These are render decisions and preserve biological field state. Surface changes also preserve that UV field but rebuild surface-dependent habitat and clear world-space spores.
 
+## Moss types - 2026-09-11
+Cushion Moss, Sheet Moss and Feather Moss provide meaningful biological and visual profiles. Type affects habitat response, growth, decay, spread, spores, color and morphology. The selected type applies to painting and selected-type starting presets. Existing colonies change only through the explicit `Convert existing` action, which preserves field history and biomass, or `Reseed scene`, which creates a new sparse field of the selected type.
+
+Control panels use top-anchored content with consistent section and row gaps. Switching to a shorter panel therefore leaves unused space below the form rather than stretching controls vertically.
+
 ## Current implementation - 2026-09-11
-The reference-led redesign is implemented for one built-in radial rock. A shared object-space surface model drives habitat, painting, moss placement, and spore collision. The live field advances at 20 fixed steps per simulated second and preserves species lineage. Biomass, cushion thickness, wetness, age, stress, dead matter, and dormant reserves now have distinct roles.
+The reference-led redesign supports built-in radial Rock, Sphere and Icosahedron surfaces. A shared object-space surface model drives habitat, painting, moss placement, and spore collision. The live field advances at 20 fixed steps per simulated second and preserves species lineage. Biomass, cushion thickness, wetness, age, stress, dead matter, and dormant reserves now have distinct roles.
 
 Rendering combines a textured substrate, continuous basal mat, 1,500 instanced cushion anchors, and up to 60,000 leafy shoot instances (30,000 in Low detail). Species weights affect color and shoot shape. Stress browns and flattens growth; moisture restoration activates species-specific dormant reserves. A bounded pool of 160 spores supports release, flight, landing, delayed germination, and expiry.
 

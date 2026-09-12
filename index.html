@@ -22,6 +22,7 @@
 </button>
 </header>
 <nav class="koke-utility-rail" role="tablist" aria-label="Studio tools" aria-orientation="vertical">
+<div class="koke-rail-group" role="presentation">
 <button id="tab-object" class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" type="button" role="tab" data-utility-tab="object" aria-controls="panel-object" aria-selected="false" tabindex="-1" title="Object" aria-label="Object">
 <i class="iconoir-cube" aria-hidden="true">
 </i>
@@ -34,6 +35,12 @@
 <i class="iconoir-view-grid" aria-hidden="true">
 </i>
 </button>
+</div>
+<div class="koke-rail-tools" role="group" aria-label="Surface painting tools">
+<button id="paintBrushToolBtn" class="ds-btn ds-btn-icon ds-btn-sm koke-tool-button" type="button" aria-pressed="false" title="Paint brush" aria-label="Paint brush"><i class="iconoir-brush" aria-hidden="true"></i></button>
+<button id="paintEraserToolBtn" class="ds-btn ds-btn-icon ds-btn-sm koke-tool-button" type="button" aria-pressed="false" title="Eraser" aria-label="Eraser"><i class="iconoir-erase" aria-hidden="true"></i></button>
+</div>
+<div class="koke-rail-group" role="presentation">
 <button id="tab-export" class="ds-btn ds-btn-icon ds-btn-sm koke-utility-tab" type="button" role="tab" data-utility-tab="export" aria-controls="panel-export" aria-selected="false" tabindex="-1" title="Export" aria-label="Export">
 <i class="iconoir-download" aria-hidden="true">
 </i>
@@ -42,6 +49,7 @@
 <i class="iconoir-settings" aria-hidden="true">
 </i>
 </button>
+</div>
 </nav>
 <div id="controlBody" class="koke-panel-body">
 <section id="panel-object" class="koke-utility-panel" role="tabpanel" aria-labelledby="tab-object" tabindex="0" data-utility-panel="object" hidden>
@@ -50,14 +58,19 @@
 <button id="object-tab-moss" class="ds-subtab" type="button" role="tab" data-object-tab="moss" aria-controls="object-panel-moss" aria-selected="false" tabindex="-1"><i class="iconoir-leaf" aria-hidden="true"></i><span>Moss</span></button>
 </div>
 <section id="object-panel-surface" class="koke-object-panel koke-section" role="tabpanel" aria-labelledby="object-tab-surface" data-object-panel="surface">
+<section class="koke-section">
 <h3>Propagation surface</h3>
 <div class="ds-field">
 <div class="ds-field-row ds-field-row-compact">
 <label class="ds-label" for="surfaceInput">Surface</label>
 <select id="surfaceInput" class="ds-select">
 <option value="rock">Rock</option>
+<option value="faceted-rock">Faceted Rock</option>
 <option value="sphere">Sphere</option>
+<option value="ellipsoid">Ellipsoid</option>
+<option value="rounded-cube">Rounded Cube</option>
 <option value="icosahedron">Icosahedron</option>
+<option value="imported" disabled>Imported model</option>
 </select>
 </div>
 <div class="ds-field-row ds-field-row-compact">
@@ -67,7 +80,26 @@
 <option value="low">Low</option>
 </select>
 </div>
+<div class="ds-field-row"><label class="ds-label" for="surfaceDeformityInput">Deformity</label><div class="ds-field-control"><input id="surfaceDeformityInput" type="range" min="0" max="1" step="0.05"></div><div class="ds-field-actions"><output id="surfaceDeformityValue"></output></div></div>
 </div>
+</section>
+<section class="koke-section">
+<h3>Material</h3>
+<div class="ds-field">
+<div class="ds-field-row"><label class="ds-label" for="surfaceBaseColorInput">Base</label><input id="surfaceBaseColorInput" type="color" value="#252c2e"></div>
+<div class="ds-field-row"><label class="ds-label" for="surfaceAccentColorInput">Accent</label><input id="surfaceAccentColorInput" type="color" value="#586063"></div>
+<div class="ds-field-row ds-field-row-compact"><label class="ds-label" for="surfaceTextureInput">Texture</label><select id="surfaceTextureInput" class="ds-select"><option value="smooth">Smooth</option><option value="grain">Fine grain</option><option value="layered">Layered</option><option value="cracked" selected>Cracked stone</option><option value="speckled">Speckled</option></select></div>
+<div class="ds-field-row"><label class="ds-label" for="surfaceTextureScaleInput">Texture scale</label><div class="ds-field-control"><input id="surfaceTextureScaleInput" type="range" min="2" max="40" step="1"></div><div class="ds-field-actions"><output id="surfaceTextureScaleValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="surfaceTextureStrengthInput">Variation</label><div class="ds-field-control"><input id="surfaceTextureStrengthInput" type="range" min="0" max="1" step="0.05"></div><div class="ds-field-actions"><output id="surfaceTextureStrengthValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="surfaceRoughnessInput">Roughness</label><div class="ds-field-control"><input id="surfaceRoughnessInput" type="range" min="0.2" max="1" step="0.05"></div><div class="ds-field-actions"><output id="surfaceRoughnessValue"></output></div></div>
+</div>
+</section>
+<section class="koke-section">
+<h3>Import</h3>
+<label class="ds-btn ds-btn-sm koke-file-button" for="surfaceFileInput"><i class="iconoir-upload" aria-hidden="true"></i><span>Choose GLB</span></label>
+<input id="surfaceFileInput" class="koke-visually-hidden" type="file" accept=".glb,model/gltf-binary">
+<p id="surfaceImportStatus" class="koke-context">Closed, star-shaped GLB · 10,000 triangles maximum.</p>
+</section>
 </section>
 <section id="object-panel-moss" class="koke-object-panel" role="tabpanel" aria-labelledby="object-tab-moss" data-object-panel="moss" hidden>
 <section class="koke-section">
@@ -82,6 +114,17 @@
 <button id="barePresetBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Bare" title="Bare">
 <span>Bare</span>
 </button>
+</div>
+</section>
+<section class="koke-section">
+<h3>Type</h3>
+<div class="ds-field">
+<div class="ds-field-row ds-field-row-compact"><label class="ds-label" for="mossTypeInput">Moss</label><select id="mossTypeInput" class="ds-select"></select></div>
+</div>
+<p id="mossTypeDescription" class="koke-context"></p>
+<div class="koke-type-actions">
+<button id="convertMossTypeBtn" class="ds-btn ds-btn-sm" type="button" title="Convert living and dormant moss while preserving biomass and age">Convert existing</button>
+<button id="reseedMossTypeBtn" class="ds-btn ds-btn-sm" type="button" title="Replace the current field with sparse seeds of this moss type">Reseed scene</button>
 </div>
 </section>
 <section class="koke-section">
@@ -182,56 +225,17 @@
 <div class="ds-field-row"><label class="ds-label" for="mossColorInvertInput">Invert</label><div class="ds-field-actions"><label class="ds-switch"><input id="mossColorInvertInput" type="checkbox"><span class="ds-switch-track"></span></label></div></div>
 </div>
 </section>
+</section>
+</section>
+<section id="panel-paint" class="koke-utility-panel" role="tabpanel" aria-label="Painting tool settings" tabindex="0" data-tool-panel="paint" hidden>
 <section class="koke-section">
-<h3>Paint</h3>
-<div class="ds-toolbar">
-<button id="paintToggleBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Paint" title="Paint">
-<i class="iconoir-brush" aria-hidden="true">
-</i>
-<span>Paint</span>
-</button>
-</div>
+<h3>Brush</h3>
 <div class="ds-field">
-<div class="ds-field-row ds-field-row-compact">
-                  <label class="ds-label" for="paintSpeciesSelect">Species</label>
-                  <div class="ds-field-control">
-                    <select id="paintSpeciesSelect" class="ds-select" aria-label="Moss species">
-</select>
-                  </div>
-                </div>
-<div class="ds-field-row">
-                  <label class="ds-label" for="paintRadiusInput">Brush Radius</label>
-                  <div class="ds-field-control">
-<input id="paintRadiusInput" type="range" min="0.08" max="1.2" step="0.01">
-</div>
-                  <div class="ds-field-actions">
-<output id="paintRadiusValue">
-</output>
-</div>
-                </div>
-<div class="ds-field-row">
-                  <label class="ds-label" for="paintStrengthInput">Brush Strength</label>
-                  <div class="ds-field-control">
-<input id="paintStrengthInput" type="range" min="0.05" max="1" step="0.01">
-</div>
-                  <div class="ds-field-actions">
-<output id="paintStrengthValue">
-</output>
-</div>
-                </div>
-<div class="ds-field-row">
-                  <label class="ds-label" for="paintEraseInput">Erase</label>
-                  <div class="ds-field-actions">
-                    <label class="ds-switch">
-                      <input id="paintEraseInput" type="checkbox">
-                      <span class="ds-switch-track">
-</span>
-                    </label>
-                  </div>
-                </div>
+<div class="ds-field-row"><label class="ds-label" for="paintRadiusInput">Radius</label><div class="ds-field-control"><input id="paintRadiusInput" type="range" min="0.08" max="1.2" step="0.01"></div><div class="ds-field-actions"><output id="paintRadiusValue"></output></div></div>
+<div class="ds-field-row"><label class="ds-label" for="paintStrengthInput">Strength</label><div class="ds-field-control"><input id="paintStrengthInput" type="range" min="0.05" max="1" step="0.01"></div><div class="ds-field-actions"><output id="paintStrengthValue"></output></div></div>
 </div>
 </section>
-</section>
+<p class="koke-context">Choose Brush or Eraser from the centered tool rail, then drag directly on the surface.</p>
 </section>
 <section id="panel-scene" class="koke-utility-panel" role="tabpanel" aria-labelledby="tab-scene" tabindex="0" data-utility-panel="scene" hidden>
 <section class="koke-section">
@@ -313,6 +317,20 @@
 </section>
 <section id="panel-export" class="koke-utility-panel" role="tabpanel" aria-labelledby="tab-export" tabindex="0" data-utility-panel="export" hidden>
 <section class="koke-section">
+<h3>Image</h3>
+<div class="ds-field">
+<div class="ds-field-row ds-field-row-compact"><label class="ds-label" for="exportPresetInput">Size</label><select id="exportPresetInput" class="ds-select"><option value="viewport">Viewport</option><option value="hd" selected>1920 × 1080</option><option value="square">2048 × 2048</option><option value="uhd">3840 × 2160</option><option value="custom">Custom</option></select></div>
+<div class="ds-field-row ds-field-row-compact"><label class="ds-label" for="exportWidthInput">Width</label><input id="exportWidthInput" class="ds-input" type="number" min="256" max="8192" step="1" inputmode="numeric"></div>
+<div class="ds-field-row ds-field-row-compact"><label class="ds-label" for="exportHeightInput">Height</label><input id="exportHeightInput" class="ds-input" type="number" min="256" max="8192" step="1" inputmode="numeric"></div>
+<div class="ds-field-row"><label for="exportAspectLockInput" class="ds-label">Lock aspect</label><label class="ds-switch"><input id="exportAspectLockInput" type="checkbox" checked><span class="ds-switch-track"></span></label></div>
+<div class="ds-field-row ds-field-row-compact"><label class="ds-label" for="exportFormatInput">Format</label><select id="exportFormatInput" class="ds-select"><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="webp">WebP</option></select></div>
+<div class="ds-field-row"><label class="ds-label" for="exportQualityInput">Quality</label><div class="ds-field-control"><input id="exportQualityInput" type="range" min="0.1" max="1" step="0.01"></div><div class="ds-field-actions"><output id="exportQualityValue"></output></div></div>
+<div class="ds-field-row"><label for="exportTransparentInput" class="ds-label">Transparent</label><label class="ds-switch"><input id="exportTransparentInput" type="checkbox"><span class="ds-switch-track"></span></label></div>
+<div class="ds-field-row ds-field-row-compact"><label class="ds-label" for="exportDetailInput">Detail</label><select id="exportDetailInput" class="ds-select"><option value="current">Current</option><option value="low">Low</option><option value="high">High</option></select></div>
+<div class="ds-field-row"><label for="exportEffectsInput" class="ds-label">View effects</label><label class="ds-switch"><input id="exportEffectsInput" type="checkbox" checked><span class="ds-switch-track"></span></label></div>
+</div>
+</section>
+<section class="koke-section">
 <h3>Latest capture</h3>
 <article class="ds-snapshot-card">
 <div class="ds-snapshot-thumb">
@@ -327,10 +345,10 @@
 <section class="koke-section">
 <h3>Download</h3>
 <div class="ds-toolbar">
-<button id="exportSnapshotBtn" class="ds-btn ds-btn-sm " type="button" aria-label="PNG" title="PNG">
+<button id="exportSnapshotBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Export image" title="Export image">
 <i class="iconoir-download" aria-hidden="true">
 </i>
-<span>PNG</span>
+<span>Image</span>
 </button>
 <button id="exportReportBtn" class="ds-btn ds-btn-sm " type="button" aria-label="Report" title="Report">
 <i class="iconoir-notes" aria-hidden="true">
@@ -387,7 +405,7 @@
 </aside>
 <section class="koke-stage" aria-label="Moss workspace">
 <div id="viewportWrap" class="koke-viewport-wrap">
-<canvas id="viewport" aria-label="Moss simulation viewport">
+<canvas id="viewport" aria-label="Moss simulation viewport" title="Left drag: active tool · Middle drag: pan · Right drag: orbit · Wheel: zoom">
 </canvas>
 <div id="brushPreview" class="koke-brush-preview" aria-hidden="true">
 </div>

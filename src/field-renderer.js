@@ -11,6 +11,12 @@ uniform float mossColorRange;
 uniform float mossColorInvert;
 uniform float mossTextureScale;
 uniform float mossTextureStrength;
+uniform vec3 surfaceBaseColor;
+uniform vec3 surfaceAccentColor;
+uniform float surfaceTextureMode;
+uniform float surfaceTextureScale;
+uniform float surfaceTextureStrength;
+uniform float surfaceRoughness;
 float grain(vec3 p) { return fract(sin(dot(p, vec3(127.1,311.7,74.7))) * 43758.5453); }
 float noise3(vec3 p) {
   vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
@@ -37,7 +43,11 @@ export function createFieldRenderer(THREE, scene, meshGeometry, options = {}) {
   const mapSize = options.coverageMapSize || 128;
   let sample = options.sampleSurface || sampleRock;
   const cushionCount = 1500;
-  const shootCount = 60000;
+  const maxShootCount = 60000, lowShootCount = 30000;
+  const seedOffset=(Number(options.seed)||0)*0.0001;
+  let quality=options.initialQuality==='low'?'low':'high';
+  let density=Math.max(0.05,Math.min(1,Number(options.initialDensity) || 1));
+  let representation=['surface','triangles','diamonds','cards','clumps','shoots'].includes(options.initialRepresentation)?options.initialRepresentation:'shoots';
   const makeTexture = () => {
     const t = new THREE.DataTexture(new Uint8Array(mapSize * mapSize * 4), mapSize, mapSize);
     t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter;
@@ -52,6 +62,9 @@ export function createFieldRenderer(THREE, scene, meshGeometry, options = {}) {
     mossColorRange: { value: 1 }, mossColorInvert: { value: 0 }, mossTextureScale: { value: 18 },
     mossTextureStrength: { value: 0.22 }, mossScale: { value: 1 }, mossAspect: { value: 1 },
     mossOrientation: { value: 1 },
+    surfaceBaseColor: { value: new THREE.Color('#252c2e') }, surfaceAccentColor: { value: new THREE.Color('#586063') },
+    surfaceTextureMode: { value: 3 }, surfaceTextureScale: { value: 14 }, surfaceTextureStrength: { value: 0.7 },
+    surfaceRoughness: { value: 0.88 },
   };
   const group = new THREE.Group(); scene.add(group);
   const material = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.88 });
@@ -64,16 +77,22 @@ export function createFieldRenderer(THREE, scene, meshGeometry, options = {}) {
 #include <color_fragment>
 vec2 uv=mossUv(vSurface);
 vec4 field=texture2D(mossState,uv);
-float coarse=noise3(vSurface*5.0), fine=noise3(vSurface*110.0);
-float cracks=smoothstep(0.46,0.52,noise3(vSurface*14.0));
-vec3 stone=mix(vec3(0.027,0.034,0.041),vec3(0.105,0.12,0.135),coarse);
-stone*=0.7+fine*0.4+cracks*0.15;
+float fine=noise3(vSurface*110.0);
+float cracks=smoothstep(0.46,0.52,noise3(vSurface*surfaceTextureScale));
+float materialNoise=noise3(vSurface*surfaceTextureScale);
+float surfacePattern=0.18;
+if(surfaceTextureMode>0.5&&surfaceTextureMode<1.5)surfacePattern=materialNoise;
+else if(surfaceTextureMode>1.5&&surfaceTextureMode<2.5)surfacePattern=0.5+0.5*sin((vSurface.y+materialNoise*0.16)*surfaceTextureScale);
+else if(surfaceTextureMode>2.5&&surfaceTextureMode<3.5)surfacePattern=cracks;
+else if(surfaceTextureMode>3.5)surfacePattern=smoothstep(0.68,0.76,materialNoise);
+vec3 stone=mix(surfaceBaseColor,surfaceAccentColor,clamp(surfacePattern*surfaceTextureStrength,0.0,1.0));
+stone*=0.82+fine*0.28;
 vec3 moss=mossTone(uv,field,vSurface)*(0.65+fine*0.7);
 moss=mix(moss,mossStressColor,field.b*0.88);
 float cover=smoothstep(0.02,0.38,field.r);
 diffuseColor.rgb=mix(stone,moss,cover)*(1.0-field.a*0.12);
 `)
-      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor=mix(0.94,0.68,field.a*(1.0-cover));')
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor=mix(surfaceRoughness,0.68,field.a*(1.0-cover));')
       .replace('#include <normal_fragment_begin>', /* glsl */ `
 #include <normal_fragment_begin>
 float relief=noise3(vSurface*85.0)*0.0012+noise3(vSurface*18.0)*0.004;
@@ -186,18 +205,19 @@ normal=normalize(abs(det)*normal-sign(det)*(dFdx(pile)*r0+dFdy(pile)*r1));
     for(let i=0;i<count;i++) {
       // Fibonacci anchors are stable, approximately equal-area, and independent of field resolution.
       const parent=isTuft?i%cushionCount:i;
-      const y=1-2*(parent+0.5)/cushionCount, angle=parent*2.39996322973;
+      const y=1-2*(parent+0.18+hash(parent+seedOffset+19)*0.64)/cushionCount;
+      const angle=parent*2.39996322973+hash(seedOffset+5)*Math.PI*2+(hash(parent*2.31+seedOffset+41)-0.5)*1.15;
       const d={x:Math.sqrt(1-y*y)*Math.cos(angle),y,z:Math.sqrt(1-y*y)*Math.sin(angle)};
       const {u,v}=uvAt(d), p=sample(u,v);
-      uvs.set([u,v],i*2);variations[i]=hash(i+37);
+      uvs.set([u,v],i*2);variations[i]=hash(i+37+seedOffset);
       normal.set(p.normal.x,p.normal.y,p.normal.z);
       dummy.position.set(p.x,p.y,p.z).addScaledVector(normal,0.004);
-      dummy.quaternion.setFromUnitVectors(up,normal);dummy.rotateY(hash(parent+4)*Math.PI*2);
-      const parentRadius=0.09+hash(parent+8)*0.12;
-      const radius=isTuft?0.075+hash(i+8)*0.04:parentRadius;
+      dummy.quaternion.setFromUnitVectors(up,normal);dummy.rotateY(hash(parent+4+seedOffset)*Math.PI*2);
+      const parentRadius=0.09+hash(parent+8+seedOffset)*0.12;
+      const radius=isTuft?0.075+hash(i+8+seedOffset)*0.04:parentRadius;
       dummy.scale.set(radius,isTuft?radius:radius*0.8,radius);
       if(isTuft){
-        const az=hash(i+69)*Math.PI*2, r=Math.sqrt(hash(i+92))*0.94;
+        const az=hash(i+69+seedOffset)*Math.PI*2, r=Math.sqrt(hash(i+92+seedOffset))*0.94;
         canopies.set([Math.cos(az)*r*parentRadius/radius,Math.sqrt(1-r*r)*parentRadius*0.8/radius,Math.sin(az)*r*parentRadius/radius],i*3);
       }
       dummy.updateMatrix();plant.setMatrixAt(i,dummy.matrix);
@@ -208,7 +228,8 @@ normal=normalize(abs(det)*normal-sign(det)*(dFdx(pile)*r0+dFdy(pile)*r1));
     plant.instanceMatrix.needsUpdate=true;
   }
   function makePlants(count,isTuft) {
-    const g=isTuft?tuftGeometry():new THREE.SphereGeometry(1,9,5,0,Math.PI*2,0,Math.PI/2);
+    const initialMode=['surface','clumps'].includes(representation)?'triangles':representation;
+    const g=isTuft?tuftGeometry(initialMode):new THREE.SphereGeometry(1,9,5,0,Math.PI*2,0,Math.PI/2);
     const plant=new THREE.InstancedMesh(g,plantMaterial(isTuft),count);
     plant.customDepthMaterial=plantMaterial(isTuft,true);
     plant.userData.capacity=count;
@@ -216,14 +237,14 @@ normal=normalize(abs(det)*normal-sign(det)*(dFdx(pile)*r0+dFdy(pile)*r1));
     plant.castShadow=!isTuft;plant.receiveShadow=true;plant.frustumCulled=false;
     group.add(plant);return plant;
   }
-  const clumps=makePlants(cushionCount,false), tufts=makePlants(shootCount,true);
+  const clumps=makePlants(cushionCount,false);let tufts=makePlants(quality==='low'?lowShootCount:maxShootCount,true);
   const dew = new THREE.InstancedMesh(new THREE.SphereGeometry(1, 16, 10), new THREE.MeshPhysicalMaterial({
     color: '#e3f2e3', roughness: 0.035, transmission: 0.95, thickness: 0.15, ior: 1.333, envMap: scene.userData.dewEnvironment, envMapIntensity: 1.5,
   }), 24);
   dew.visible = false; dew.frustumCulled = false; group.add(dew);
   const dewAnchors = Array.from({length:24},(_,i)=>{
-    const u=hash(i+91),v=0.56+hash(i+201)*0.33;
-    return {u,v,p:sample(u,v),radius:0.035+hash(i+812)*0.055};
+    const u=hash(i+91+seedOffset),v=0.56+hash(i+201+seedOffset)*0.33;
+    return {u,v,p:sample(u,v),radius:0.035+hash(i+812+seedOffset)*0.055};
   });
   const dewDummy=new THREE.Object3D(),dewUp=new THREE.Vector3(0,1,0),dewNormal=new THREE.Vector3();
   const particleGeometry=new THREE.BufferGeometry();
@@ -235,15 +256,21 @@ normal=normalize(abs(det)*normal-sign(det)*(dFdx(pile)*r0+dFdy(pile)*r1));
   };
   const particles=new THREE.Points(particleGeometry,particleMaterial);particles.frustumCulled=false;group.add(particles);
   let liveClumps=0;
-  let quality='high',density=1,representation='shoots';
   function syncRepresentation() {
     clumps.visible=representation==='clumps'||representation==='shoots';
     tufts.visible=!['surface','clumps'].includes(representation);
-    const qualityLimit=quality==='low'?30000:shootCount;
-    tufts.count=Math.max(1,Math.round(qualityLimit*density));
+    const qualityLimit=quality==='low'?lowShootCount:maxShootCount;
+    tufts.count=Math.min(tufts.userData.capacity,Math.max(1,Math.round(qualityLimit*density)));
   }
+  function ensureTuftCapacity(capacity) {
+    if(tufts.userData.capacity>=capacity)return false;
+    group.remove(tufts);tufts.geometry.dispose();tufts.material.dispose();tufts.customDepthMaterial.dispose();
+    tufts=makePlants(capacity,true);
+    return true;
+  }
+  syncRepresentation();
   return {
-    mesh, group, clumps, tufts,
+    mesh, group, clumps, get tufts(){return tufts;},
     setCoverage(map) {
       state.image.data.set(map.data);species.image.data.set(map.species);
       state.needsUpdate=true;species.needsUpdate=true;
@@ -274,14 +301,15 @@ normal=normalize(abs(det)*normal-sign(det)*(dFdx(pile)*r0+dFdy(pile)*r1));
       if(typeof nextSample!=='function'||!nextGeometry?.attributes?.position)throw new TypeError('A sampler and geometry are required');
       sample=nextSample;
       const previous=mesh.geometry;mesh.geometry=nextGeometry;if(previous!==nextGeometry)previous.dispose();
-      positionPlants(clumps,cushionCount,false);positionPlants(tufts,shootCount,true);
+      positionPlants(clumps,cushionCount,false);positionPlants(tufts,tufts.userData.capacity,true);
       for(const anchor of dewAnchors)anchor.p=sample(anchor.u,anchor.v);
     },
     setRepresentation(mode) {
       if(!['surface','triangles','diamonds','cards','clumps','shoots'].includes(mode))throw new RangeError('Unknown moss representation');
       representation=mode;
-      if(!['surface','clumps'].includes(mode)){
-        const previous=tufts.geometry;tufts.geometry=tuftGeometry(mode);positionPlants(tufts,shootCount,true);previous.dispose();
+      const expanded=quality==='high'&&!['surface','clumps'].includes(mode)&&ensureTuftCapacity(maxShootCount);
+      if(!['surface','clumps'].includes(mode)&&!expanded){
+        const previous=tufts.geometry;tufts.geometry=tuftGeometry(mode);positionPlants(tufts,tufts.userData.capacity,true);previous.dispose();
       }
       syncRepresentation();
     },
@@ -293,8 +321,16 @@ normal=normalize(abs(det)*normal-sign(det)*(dFdx(pile)*r0+dFdy(pile)*r1));
       for(const [key,uniform] of [['colorRange','mossColorRange'],['textureScale','mossTextureScale'],['textureStrength','mossTextureStrength'],['scale','mossScale'],['aspect','mossAspect'],['orientation','mossOrientation']])if(next[key]!==undefined)uniforms[uniform].value=Number(next[key]);
       if(next.invert!==undefined)uniforms.mossColorInvert.value=next.invert?1:0;
     },
+    setSurfaceAppearance(next={}) {
+      if(next.baseColor)uniforms.surfaceBaseColor.value.set(next.baseColor);
+      if(next.accentColor)uniforms.surfaceAccentColor.value.set(next.accentColor);
+      if(next.texture){const modes={smooth:0,grain:1,layered:2,cracked:3,speckled:4};if(!(next.texture in modes))throw new RangeError('Unknown surface texture');uniforms.surfaceTextureMode.value=modes[next.texture];}
+      if(next.textureScale!==undefined)uniforms.surfaceTextureScale.value=Number(next.textureScale);
+      if(next.textureStrength!==undefined)uniforms.surfaceTextureStrength.value=Number(next.textureStrength);
+      if(next.roughness!==undefined)uniforms.surfaceRoughness.value=Number(next.roughness);
+    },
     setDensity(value){density=Math.max(0.05,Math.min(1,Number(value)));syncRepresentation();},
-    setQuality(value) {quality=value;syncRepresentation();},
+    setQuality(value) {if(!['low','high'].includes(value))throw new RangeError('Unknown render quality');quality=value;if(value==='high'&&!['surface','clumps'].includes(representation))ensureTuftCapacity(maxShootCount);syncRepresentation();},
     setDew(value) {dew.visible=Boolean(value);},
     setWireframe(value) {material.wireframe=value;clumps.material.wireframe=value;tufts.material.wireframe=value;},
     getStats() {return {clumpCount:liveClumps,maxClumps:clumps.count,tuftCount:tufts.visible?tufts.count:0,mapSize,representation,density};},

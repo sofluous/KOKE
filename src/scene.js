@@ -2,14 +2,16 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/OrbitControls.js";
 import { sampleRock, uvAt } from './substrate.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { configurePointerControls } from './interaction-controls.js';
 
 const DEFAULT_LIGHT_ELEVATION_DEG = 54;
 const DEFAULT_LIGHT_AZIMUTH_DEG = 18;
 
-export function createScene(canvas) {
+export function createScene(canvas, options = {}) {
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
+    alpha: true,
     powerPreference: "high-performance",
   });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -35,6 +37,7 @@ export function createScene(canvas) {
 
   const controls = new OrbitControls(camera, canvas);
   controls.enableDamping = true;
+  configurePointerControls(controls,THREE.MOUSE,canvas);
   controls.target.set(0, 0.15, 0);
   controls.minDistance = 2.6;
   controls.maxDistance = 16;
@@ -56,7 +59,8 @@ export function createScene(canvas) {
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: '#20282b', roughness: 0.9 }));
   floor.rotation.x = -Math.PI / 2; floor.position.y = -2.05; floor.receiveShadow = true; scene.add(floor);
 
-  const geometry = createSurfaceGeometry(sampleRock);
+  const initialSample = options.sampleSurface || sampleRock;
+  const geometry = createSurfaceGeometry(initialSample, options.surfaceDetail || 'high', Boolean(options.faceted));
 
   return {
     THREE,
@@ -68,12 +72,13 @@ export function createScene(canvas) {
       ambient,
       sun,
     },
+    floor,
     meshGeometry: geometry,
   };
 }
 
 export function createSurfaceGeometry(sampleSurface, detail = 'high', faceted = false) {
-  const [widthSegments,heightSegments]=detail==='low'?[48,24]:[128,64];
+  const [widthSegments,heightSegments]=faceted?(detail==='low'?[20,10]:[40,20]):(detail==='low'?[48,24]:[128,64]);
   const geometry = new THREE.SphereGeometry(1, widthSegments, heightSegments);
   const position = geometry.attributes.position;
   for (let i = 0; i < position.count; i += 1) {

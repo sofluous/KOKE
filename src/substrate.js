@@ -39,6 +39,36 @@ export function sampleSphere(u, v) {
   return { x: d.x * 2.2, y: d.y * 2.2, z: d.z * 2.2, normal: d, heightNorm: (d.y + 1) / 2 };
 }
 
+function radialSample(radiusAt,u,v) {
+  const d=directionAt(u,v),r=radiusAt(d),p={x:d.x*r,y:d.y*r,z:d.z*r};
+  const f=(x,y,z)=>{const length=Math.hypot(x,y,z);return length-radiusAt({x:x/length,y:y/length,z:z/length});};
+  const e=0.002,nx=f(p.x+e,p.y,p.z)-f(p.x-e,p.y,p.z),ny=f(p.x,p.y+e,p.z)-f(p.x,p.y-e,p.z),nz=f(p.x,p.y,p.z+e)-f(p.x,p.y,p.z-e);
+  const nl=Math.hypot(nx,ny,nz)||1;
+  return {...p,normal:{x:nx/nl,y:ny/nl,z:nz/nl},heightNorm:clamp(p.y/4.8+0.5)};
+}
+
+function ellipsoidRadius(d,rx,ry,rz) {
+  return 1/Math.sqrt(d.x*d.x/(rx*rx)+d.y*d.y/(ry*ry)+d.z*d.z/(rz*rz));
+}
+
+export function createSurfaceSampler(key,options={}) {
+  const seed=Number.isInteger(options.seed)?options.seed:0;
+  const deformity=clamp(Number(options.deformity) || 0,0,1);
+  const ox=hash(seed+12.1)*48,oy=hash(seed+31.7)*48,oz=hash(seed+67.3)*48;
+  if(key==='sphere')return sampleSphere;
+  if(key==='ellipsoid')return (u,v)=>radialSample(d=>ellipsoidRadius(d,2.65,1.72,2.08),u,v);
+  if(key==='rounded-cube')return (u,v)=>radialSample(d=>2.0/Math.pow(Math.abs(d.x)**6+Math.abs(d.y)**6+Math.abs(d.z)**6,1/6),u,v);
+  if(key==='icosahedron')return sampleIcosahedron;
+  const radiusAt=d=>{
+    const base=ellipsoidRadius(d,2.45,1.85,2.25);
+    const broad=noise(d.x*2.1+ox,d.y*2.1+oy,d.z*2.1+oz)-0.5;
+    const fine=noise(d.x*5.7+oz,d.y*5.7+ox,d.z*5.7+oy)-0.5;
+    const amount=0.12+deformity*0.36;
+    return base*(1+broad*amount+fine*amount*0.28);
+  };
+  return (u,v)=>radialSample(radiusAt,u,v);
+}
+
 const phi = (1 + Math.sqrt(5)) / 2;
 const icoVertices = [
   [-1,phi,0],[1,phi,0],[-1,-phi,0],[1,-phi,0],[0,-1,phi],[0,1,phi],
@@ -65,6 +95,9 @@ export function sampleIcosahedron(u,v) {
 
 export const surfaceCatalog = Object.freeze({
   rock: { name: 'Rock', sample: sampleRock },
+  'faceted-rock': { name: 'Faceted Rock', sample: sampleRock, faceted: true },
   sphere: { name: 'Sphere', sample: sampleSphere },
+  ellipsoid: { name: 'Ellipsoid', sample: createSurfaceSampler('ellipsoid') },
+  'rounded-cube': { name: 'Rounded Cube', sample: createSurfaceSampler('rounded-cube') },
   icosahedron: { name: 'Icosahedron', sample: sampleIcosahedron },
 });

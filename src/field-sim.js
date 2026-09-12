@@ -24,6 +24,14 @@ export class FieldSimulation {
     this.speciesCount = 3;
     this.mapSize = options.mapSize ?? 128;
     if (!Number.isInteger(this.mapSize) || this.mapSize < 8 || this.mapSize > 256 || this.mapSize % 2) throw new RangeError('Map size must be even and between 8 and 256');
+    this.seed = options.seed ?? 0;
+    if (!Number.isInteger(this.seed) || this.seed < 0 || this.seed > 0xffffffff) throw new RangeError('Seed must be an unsigned 32-bit integer');
+    this.seedOffsets = {
+      x: hash(this.seed + 0.17) * 64,
+      y: hash(this.seed + 1.31) * 64,
+      z: hash(this.seed + 2.73) * 64,
+      life: hash(this.seed + 4.91) * 2048,
+    };
     this.environment = environmentFrom(options.environment || {});
     this.cellCount = this.mapSize ** 2;
     this.channelsA = new Float32Array(this.cellCount * 4);
@@ -44,7 +52,8 @@ export class FieldSimulation {
     this.germinations = 0; this.collapses = 0;
     this._buildSurface();
     this.setLightDirection(options.lightDirection || this.lightDirection);
-    this.reset(options.initialState ?? 'mature');
+    this.initialSpeciesId = options.initialSpeciesId ?? null;
+    this.reset(options.initialState ?? 'mature', this.initialSpeciesId);
   }
   _buildSurface() {
     const n = this.mapSize;
@@ -54,8 +63,8 @@ export class FieldSimulation {
       this.normals.set([p.normal.x, p.normal.y, p.normal.z], i * 3);
       this.slopeMap[i] = 1 - clamp(p.normal.y);
       this.heightMap[i] = p.heightNorm;
-      this.lifespanMap[i] = 65 + hash(i) * 70;
-      this.capacityMap[i] = clamp((noise(p.x * 1.2 + 6, p.y * 1.2 + 2, p.z * 1.2) - 0.35) * 3) * clamp((p.y + 1.4) * 0.8);
+      this.lifespanMap[i] = 65 + hash(i + this.seedOffsets.life) * 70;
+      this.capacityMap[i] = clamp((noise(p.x * 1.2 + 6 + this.seedOffsets.x, p.y * 1.2 + 2 + this.seedOffsets.y, p.z * 1.2 + this.seedOffsets.z) - 0.35) * 3) * clamp((p.y + 1.4) * 0.8);
       const r = Math.hypot(p.x, p.y, p.z);
       const facing = Math.max(0.1, (p.x * p.normal.x + p.y * p.normal.y + p.z * p.normal.z) / r);
       this.areaMap[i] = Math.sin((y + 0.5) / n * Math.PI) * r * r / facing;
@@ -88,8 +97,9 @@ export class FieldSimulation {
       for (let side = 0; side < 4; side += 1) this.neighborWeights[i * 4 + side] /= weightSum;
     }
   }
-  reset(mode = 'mature') {
+  reset(mode = 'mature', speciesId = null) {
     if (!['mature', 'seed', 'bare'].includes(mode)) throw new RangeError('Unknown initial state');
+    if (speciesId!==null&&(!Number.isInteger(speciesId)||speciesId<0||speciesId>=this.speciesCount))throw new RangeError('Unknown moss type');
     this.channelsA.fill(0); this.channelsB.fill(0);
     this.dormantMap.fill(0);
     for (const name of ['ageMap', 'stressMap', 'deadMap', 'massMap']) this[name].fill(0);
@@ -97,16 +107,28 @@ export class FieldSimulation {
     this.time = 0; this.accumulator = 0; this.totalTicks = 0; this.collapses = 0; this.germinations = 0;
     if (mode !== 'bare') for (let i = 0; i < this.cellCount; i += 1) {
       const j = i * 3, x = this.positions[j], y = this.positions[j + 1], z = this.positions[j + 2];
-      const patch = noise(x * 1.2 + 6, y * 1.2 + 2, z * 1.2);
-      const detail = noise(x * 4, y * 4, z * 4);
+      const patch = noise(x * 1.2 + 6 + this.seedOffsets.x, y * 1.2 + 2 + this.seedOffsets.y, z * 1.2 + this.seedOffsets.z);
+      const detail = noise(x * 4 + this.seedOffsets.z, y * 4 + this.seedOffsets.x, z * 4 + this.seedOffsets.y);
       const density = clamp((patch + detail * 0.13 - (mode === 'seed' ? 0.69 : 0.43)) * 4) * clamp((y + 1.4) * 0.8);
-      const species = noise(x + 22, y, z) > 0.57 ? 1 : noise(x * 2, y * 2 + 4, z * 2) > 0.55 ? 2 : 0;
+      const species = speciesId ?? (noise(x + 22 + this.seedOffsets.y, y + this.seedOffsets.z, z + this.seedOffsets.x) > 0.57 ? 1 : noise(x * 2 + this.seedOffsets.z, y * 2 + 4 + this.seedOffsets.x, z * 2 + this.seedOffsets.y) > 0.55 ? 2 : 0);
       this.channelsA[i * 4 + species] = density * (mode === 'seed' ? 0.16 : 0.85);
       this.channelsA[i * 4 + 3] = density > 0 ? 0.85 : 0;
       this.massMap[i] = density * (mode === 'seed' ? 0.01 : 0.8);
       this.ageMap[i] = mode === 'seed' ? 0 : density * 38;
     }
     this.dirty = true;
+  }
+  convertSpecies(speciesId) {
+    if(!Number.isInteger(speciesId)||speciesId<0||speciesId>=this.speciesCount)throw new RangeError('Unknown moss type');
+    let changed=0;
+    for(let i=0;i<this.cellCount;i++){
+      const k=i*4,b=i*3;
+      const total=this.channelsA[k]+this.channelsA[k+1]+this.channelsA[k+2];
+      const dormant=this.dormantMap[b]+this.dormantMap[b+1]+this.dormantMap[b+2];
+      if(total>0&&(this.channelsA[k+speciesId]<total-1e-8))changed++;
+      for(let s=0;s<this.speciesCount;s++){this.channelsA[k+s]=s===speciesId?total:0;this.dormantMap[b+s]=s===speciesId?dormant:0;}
+    }
+    this.dirty=true;return changed;
   }
   setEnvironment(partial) { this.environment = environmentFrom({ ...this.environment, ...partial }); this._buildStaticMaps(); }
   setLightDirection(d) {

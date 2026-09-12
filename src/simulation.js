@@ -1,10 +1,11 @@
 const UP = { x: 0, y: 1, z: 0 };
 
-export const mossSpeciesCatalog = [
+export const mossTypeCatalog = [
   {
     id: 0,
-    key: "forest_moss",
-    name: "Forest Moss",
+    key: "cushion_moss",
+    name: "Cushion Moss",
+    description: "Dense rounded colonies with moderate spread and moisture needs.",
     color: "#5f8f4f",
     growthMultiplier: 0.92,
     decayMultiplier: 0.9,
@@ -15,8 +16,9 @@ export const mossSpeciesCatalog = [
   },
   {
     id: 1,
-    key: "rock_lichen",
-    name: "Rock Lichen",
+    key: "sheet_moss",
+    name: "Sheet Moss",
+    description: "Low creeping mats that favor inclined surfaces and drier conditions.",
     color: "#8cae78",
     growthMultiplier: 0.58,
     decayMultiplier: 0.62,
@@ -27,8 +29,9 @@ export const mossSpeciesCatalog = [
   },
   {
     id: 2,
-    key: "velvet_moss",
-    name: "Velvet Moss",
+    key: "feather_moss",
+    name: "Feather Moss",
+    description: "Taller fine growth with strong spread and a preference for moisture.",
     color: "#4f8557",
     growthMultiplier: 1.02,
     decayMultiplier: 0.98,
@@ -38,6 +41,7 @@ export const mossSpeciesCatalog = [
     clumpProfile: { scale: 1.06, verticality: 1.18, patchiness: 0.74 },
   },
 ];
+export const mossSpeciesCatalog = mossTypeCatalog;
 
 export const defaultEnvironment = {
   moisture: 0.58,

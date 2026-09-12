@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/run-tests.js && node tests/field-tests.js && node tests/spore-tests.js",
-    "check": "node --check src/main.js && node --check src/scene.js && node --check src/simulation.js && node --check src/renderer.js && node --check src/field-sim.js && node --check src/field-renderer.js && node --check src/substrate.js && node --check src/spores.js && node --check src/view-effects.js && node --check src/debug.js && node --check src/ui.js && node --check src/studio-shell.js"
+    "test": "node tests/run-tests.js && node tests/field-tests.js && node tests/spore-tests.js && node tests/export-tests.js && node tests/interaction-tests.js",
+    "check": "node --check src/main.js && node --check src/scene.js && node --check src/simulation.js && node --check src/renderer.js && node --check src/field-sim.js && node --check src/field-renderer.js && node --check src/substrate.js && node --check src/radial-surface.js && node --check src/model-import.js && node --check src/spores.js && node --check src/view-effects.js && node --check src/export-image.js && node --check src/interaction-controls.js && node --check src/debug.js && node --check src/ui.js && node --check src/studio-shell.js"
   }
 }
