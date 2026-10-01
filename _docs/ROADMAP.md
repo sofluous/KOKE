@@ -13,6 +13,12 @@ Surface delivery now includes six built-ins, seeded rock deformity, procedural m
 
 Pointer mapping is now fixed across every tool: left interaction, middle pan/track, right orbit and wheel zoom. The first organic/performance pass adds session-seeded anchor jitter and progressive 30,000-to-60,000 shoot allocation. Further work should measure GPU overdraw on target hardware and tune colony-scale variation from visual review.
 
+The second organic/performance pass adds adjustable colony-scale variation and shoot patchiness without increasing geometry. Bare fields suppress geometric moss draws, spore buffers update only after visible state changes, and diagnostics refresh at 4 Hz.
+
+The Chrome review is now recorded at a fixed 1920 x 1080 buffer. Reference-led tuning reduced the repeated spherical cushion effect without adding geometry. Surface mat and cards generally retained a 16.7 ms median on Intel UHD 620, while detailed shoots produced the least reliable frame times.
+
+Distance-sensitive shoot detail is delivered. Macro views retain the requested Low/High and Density budget, while overview distances smoothly reduce only Detailed-shoot instances to as little as 45%. The next renderer item is stronger species-specific geometry so Cushion, Sheet and Feather moss remain visually distinct beyond color and growth behavior. General topology remains after that focused improvement.
+
 ## Delivery update - 2026-09-11
 - Implemented field correctness repairs: finite validated inputs, unified mapping, updated habitats, species preservation, area-weighted statistics, and fixed-time evolution.
 - Implemented layered moss on one rock: basal material, raised cushions, leafy shoots, lighting, and shadows.

@@ -1,5 +1,20 @@
 # PRODUCT
 
+## Distance-sensitive shoot detail - 2026-10-01
+Detailed shoots now use a smooth camera-distance factor while Adaptive shoots is enabled. Macro views at four scene units or closer retain the full density requested by the Density and Low/High controls. From four to ten units, only the active instance count declines; the factor bottoms out at 45%. Stable instance anchors, allocated capacity, cards, clumps and biological state do not change, so camera movement does not rebuild geometry or alter growth.
+
+The Render panel includes an Adaptive shoots switch for exact manual budgets. Diagnostics report whether adaptation is enabled, the current factor and camera distance. In the deterministic Chrome check, High detail at density 0.5 used 30,000 shoots at the 3.66-unit Macro preset and 14,665 at the 9.03-unit Isometric preset. Disabling adaptation restored 30,000, while Crossed cards remained at their requested count.
+
+## Chrome visual and performance baseline - 2026-09-26
+A deterministic Chrome review showed that the earlier cushion layer read as similarly sized round bubbles. The tuned renderer uses wider variation, makes broad colonies flatter and small colonies taller, adds seeded low-amplitude silhouette deformation, reduces cushion footprints, and raises default shoot patchiness. This creates more exposed substrate and less regular colony edges without increasing instance or triangle counts.
+
+At a fixed 1920 x 1080 drawing buffer on Intel UHD 620, Surface mat and Crossed cards usually retained a 16.7 ms median. Detailed shoots were the only representation to reach a 33.3 ms median in a measured scenario and had inconsistent 33-50 ms p95 results. This makes distance-sensitive shoot detail the next performance priority. See [the measured review](data/PERFORMANCE_REVIEW_2026-09-26.md).
+
+## Colony variation and renderer efficiency - 2026-09-26
+Moss Geometry now includes Colony variation and Patchiness. Colony variation changes seeded per-colony width and height without adding instances. Patchiness gives individual shoots different emergence thresholds, creating uneven colony edges and a more gradual transition from sparse growth to mature clumps. A stable tangent fallback prevents invalid shoot orientation near radial poles.
+
+Rendering skips clump and shoot draw calls when the field is bare. Spore position buffers upload only when visible particle state changes, and diagnostics presentation is limited to 4 Hz while frame-time smoothing and simulation cadence remain continuous. Renderer reports now include allocated shoot capacity and whether geometric moss is active for performance comparisons.
+
 ## Pointer interaction and organic placement - 2026-09-12
 Pointer behavior is invariant across tool state: left drag belongs only to the active interaction tool, middle drag pans/tracks, right drag orbits, and the wheel zooms in or out. The viewport suppresses the browser context menu so right-orbit remains uninterrupted. Brush and Eraser therefore cannot accidentally hand a left stroke to camera rotation.
 

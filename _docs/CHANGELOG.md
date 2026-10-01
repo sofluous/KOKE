@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 2026-10-01 - adaptive detailed-shoot LOD
+- Added smooth distance-sensitive instance counts for Detailed shoots, retaining full macro density and reducing overview counts to a 45% floor without rebuilding geometry.
+- Added an enabled-by-default Adaptive shoots switch under Render; disabling it restores the exact manual Low/High and Density budget.
+- Exposed camera distance, LOD factor and adaptive state in renderer diagnostics while leaving cards, clumps and simulation state unchanged.
+- Added a focused unit regression and Chrome behavior check. All 29 automated tests and five browser assertions pass.
+
+## 2026-09-26 - Chrome visual tuning and performance baseline
+- Rebalanced colony width and height, reduced cushion footprints, and added seeded low-amplitude silhouette deformation to reduce repetitive spherical clumps without adding geometry.
+- Raised default Colony variation to 0.85 and Patchiness to 0.70 after deterministic overview and macro review.
+- Expanded the Chrome performance probe to a repeatable 24-case matrix at a fixed 1920 x 1080 drawing buffer and recorded full results, summary and captures under `_docs/data`.
+- Confirmed bare Detailed shoots collapse to the three-call substrate path; measured Detailed shoots as the next performance target on Intel UHD 620.
+
+## 2026-09-26 - organic colonies and reduced update cost
+- Added Colony variation and Patchiness controls that vary seeded colony proportions and per-shoot emergence thresholds without adding geometry.
+- Added a stable tangent fallback for shoot orientation near radial poles.
+- Suppressed clump and shoot draws for bare fields and exposed shoot allocation/geometry visibility in renderer diagnostics.
+- Added spore revision tracking so particle buffers upload only after visible particle changes, including no uploads for an idle empty pool.
+- Throttled full simulation-stat collection and diagnostics DOM updates to 4 Hz while retaining continuous frame smoothing and simulation timing.
+- Production syntax checks and all 28 automated tests pass.
+
 ## 2026-09-12 - pointer mapping and progressive moss allocation
 - Reserved left mouse drag for the active interaction tool, remapped middle drag to pan/track and right drag to orbit, retained wheel zoom, and suppressed the viewport context menu.
 - Added a viewport interaction tooltip and a focused pointer-mapping regression test.

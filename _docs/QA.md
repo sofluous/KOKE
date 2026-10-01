@@ -1,5 +1,20 @@
 # QA
 
+## Adaptive shoot-detail verification - 2026-10-01
+Production syntax checks and all 29 tests pass. The new unit check verifies finite inputs, range validation, endpoint clamping and monotonic smooth reduction. A focused Chrome 153 check passed five assertions with no browser or shader errors: Macro retained 30,000 shoots at distance 3.66; Isometric reduced them to 14,665 at distance 9.03; disabling adaptation restored 30,000; Crossed cards remained at 30,000; and all compiled GPU programs remained runnable. See [the browser result](data/LOD_BROWSER_CHECK_2026-10-01.json).
+
+The feature changes the active instance range and leaves the 60,000-slot High allocation available, avoiding allocation churn while orbiting or zooming. It therefore reduces vertex and fragment work rather than peak memory. The minimum factor is intentionally conservative at 45%; visual review on other hardware may justify different distance thresholds later.
+
+## Chrome visual and performance review - 2026-09-26
+Chrome 153 compiled and rendered the revised shaders without runtime, console or shader errors. The deterministic Faceted Rock overview and macro captures were reviewed after tuning; broader colonies are flatter, smaller colonies retain height, cushion footprints are reduced, and exposed substrate remains readable. Artifacts: [overview](data/VISUAL_OVERVIEW_2026-09-26.png), [macro](data/VISUAL_MACRO_2026-09-26.png), [full measurements](data/PERFORMANCE_2026-09-26.json), and [review summary](data/PERFORMANCE_REVIEW_2026-09-26.md).
+
+The fixed 1920 x 1080 run used Chrome 153 and Intel UHD 620 with effects and dew disabled, a mature field, density 0.5, and active simulation. Twenty-four combinations covered Sphere, Faceted Rock and Icosahedron; Surface mat, Crossed cards, Low-poly clumps and Detailed shoots; and Low/High detail. Detailed shoots remain the clearest optimization target. Frame intervals from short headless runs are comparative and contain scheduler spikes; they are not a universal hardware guarantee. No representative GLB fixture was available, so imported-model timing remains open.
+
+## Colony variation and update-cost verification - 2026-09-26
+Production syntax checks and all 28 tests pass. Spore regressions now verify monotonic revision changes on release/reset and no revision change for an idle empty pool. Source checks confirm the new Colony variation and Patchiness bindings, bare-field geometry suppression, 4 Hz diagnostics presentation and renderer allocation/visibility reporting.
+
+The later Chrome review above closes the shader-compilation and initial-default checks. Triangle counts and frame intervals provide comparative evidence, while direct GPU overdraw counters remain unavailable in the current harness.
+
 ## Pointer and progressive-renderer verification - 2026-09-12
 Production syntax checks and all 28 tests pass. The new interaction test verifies that left mouse is unassigned from OrbitControls, middle maps to pan, right maps to orbit, and the context menu is suppressed. Existing field and renderer-facing regressions continue to pass.
 

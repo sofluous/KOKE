@@ -26,6 +26,7 @@ export function createDiagnostics({ simulation, mossRenderer, uiState, spores, r
   let tickCounter = 0;
   let tickWindowMs = 0;
   let ticksPerSecond = 0;
+  let presentationWindowMs = 250;
   const logBuffer = [];
 
   function pushLog(message) {
@@ -78,6 +79,10 @@ export function createDiagnostics({ simulation, mossRenderer, uiState, spores, r
       tickCounter = 0;
       tickWindowMs = 0;
     }
+
+    presentationWindowMs += frameMs;
+    if (presentationWindowMs < 250) return;
+    presentationWindowMs = 0;
 
     const simStats = simulation.getStats();
     const renderStats = mossRenderer.getStats();

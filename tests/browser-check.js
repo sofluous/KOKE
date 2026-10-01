@@ -38,8 +38,10 @@ export async function runBrowserChecks() {
   check(k.renderer.info.programs.every((program) => program.diagnostics?.runnable !== false), 'compiled GPU programs are runnable');
   toggle('softFocusInput', false); toggle('dewInput', false);
   const detail = document.getElementById('detailInput'); detail.value = 'low'; detail.dispatchEvent(new Event('change'));
-  check(k.mossRenderer.tufts.count === 30000 && k.simulation.getStats().avgDensity > 0, 'low detail reduces geometry without resetting biology');
+  const lowDetailCount=k.mossRenderer.tufts.count;
+  check(lowDetailCount>0 && k.simulation.getStats().avgDensity > 0, 'low detail preserves visible moss without resetting biology');
   detail.value = 'high'; detail.dispatchEvent(new Event('change'));
+  check(k.mossRenderer.tufts.count>lowDetailCount,'high detail raises the active shoot budget');
   k.setViewPreset('iso');
   return { passed, grown, spores: sporeStats, collapsed };
 }

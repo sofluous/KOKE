@@ -16,9 +16,11 @@ run('spores land before delayed germination with preserved species',()=>{
   assert.equal(s.lastEvent.species,2);assert.ok(f.channelsA[s.lastEvent.index*4+2]>0);
 });
 run('spore pools stay bounded and reset clears pending births',()=>{
- const {f,s}=setup();const i=f.indexAt({x:0,y:2.2,z:0});
+ const {f,s}=setup();const i=f.indexAt({x:0,y:2.2,z:0}),initialRevision=s.revision;
  for(let k=0;k<4;k++)assert.ok(s.release(i));assert.equal(s.release(i),false);
- s.reset();for(let k=0;k<200;k++)s.step(0.05);assert.equal(s.getStats().active,0);assert.equal(f.germinations,0);
+ assert.ok(s.revision>initialRevision);const releasedRevision=s.revision;
+ s.reset();assert.ok(s.revision>releasedRevision);const resetRevision=s.revision;
+ s.step(0.05);assert.equal(s.revision,resetRevision);for(let k=1;k<200;k++)s.step(0.05);assert.equal(s.getStats().active,0);assert.equal(f.germinations,0);
 });
 run('dry landing cannot germinate',()=>{
  const {f,s}=setup();f.wetMap.fill(0);const i=f.indexAt({x:0,y:2.2,z:0});s.release(i);

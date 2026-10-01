@@ -29,7 +29,7 @@ function bindSelect(id, state, key, onChange) {
 
 export function createUI(initialState, callbacks) {
   const state = { ...initialState };
-  for(const key of ['softFocus','dew']) {
+  for(const key of ['softFocus','dew','adaptiveDetail']) {
     const input=document.getElementById(key+'Input');
     if(input) {input.checked=state[key]; input.addEventListener('change',()=>{state[key]=input.checked;callbacks.onViewSetting(key,input.checked);});}
   }
@@ -127,6 +127,8 @@ export function createUI(initialState, callbacks) {
     ['mossScaleInput','mossScaleValue','mossScale','scale'],
     ['mossAspectInput','mossAspectValue','mossAspect','aspect'],
     ['mossOrientationInput','mossOrientationValue','mossOrientation','orientation'],
+    ['mossColonyVariationInput','mossColonyVariationValue','mossColonyVariation','colonyVariation'],
+    ['mossPatchinessInput','mossPatchinessValue','mossPatchiness','patchiness'],
     ['mossColorRangeInput','mossColorRangeValue','mossColorRange','colorRange'],
     ['mossTextureScaleInput','mossTextureScaleValue','mossTextureScale','textureScale'],
     ['mossTextureStrengthInput','mossTextureStrengthValue','mossTextureStrength','textureStrength'],

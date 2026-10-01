@@ -88,6 +88,7 @@ const ui = createUI(
     softFocus: false,
     dew: false,
     detail: startupRenderDetail,
+    adaptiveDetail: true,
     surface: startupSurface,
     surfaceDetail: startupSurfaceDetail,
     surfaceDeformity:0.55,
@@ -102,6 +103,8 @@ const ui = createUI(
     mossScale: 1,
     mossAspect: 1,
     mossOrientation: 1,
+    mossColonyVariation: 0.85,
+    mossPatchiness: 0.7,
     mossRootColor: '#24451f',
     mossTipColor: '#a5c950',
     mossStressColor: '#4b2814',
@@ -165,6 +168,7 @@ const ui = createUI(
       if(key==='softFocus') effects.setEnabled(value);
       if(key==='dew') mossRenderer.setDew(value);
       if(key==='detail') mossRenderer.setQuality(value);
+      if(key==='adaptiveDetail') mossRenderer.setAdaptiveDetail(value);
     },
     onSurface(key) { applySurface(key,ui.state.surfaceDetail); },
     onSurfaceDetail(detail) { if(ui.state.surface!=='imported')applySurface(ui.state.surface,detail); },
@@ -524,8 +528,9 @@ function animate() {
   }
   mossRenderer.update(simulation.time, spores);
 
-  diagnostics.update(frameMs, simStepped);
   controls.update();
+  mossRenderer.setViewDistance(camera.position.distanceTo(controls.target));
+  diagnostics.update(frameMs, simStepped);
   effects.render();
   requestAnimationFrame(animate);
 }

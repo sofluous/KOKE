@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 const tabs = await (await fetch('http://127.0.0.1:9333/json/list')).json();
 const tab = tabs.find((t) => t.url.startsWith('http://127.0.0.1:8765'));
-if (!tab) throw new Error('Open KOKE at port 8765 in Edge with remote debugging on port 9333');
+if (!tab) throw new Error('Open KOKE at port 8765 in Chrome with remote debugging on port 9333');
 const ws = new WebSocket(tab.webSocketDebuggerUrl);
 await new Promise((resolve, reject) => { ws.onopen = resolve; ws.onerror = reject; });
 let sequence = 0;
@@ -24,12 +24,24 @@ try {
     const [width, height] = process.env.KOKE_VIEWPORT.split('x').map(Number);
     await call('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
   }
-  if (process.argv[2] === 'reload') { await call('Page.reload', { ignoreCache: true }); await new Promise((r) => setTimeout(r, 7000)); }
-  const expression = process.env.KOKE_EXPRESSION || '({ready:!!window.koke,stats:window.koke?.diagnostics.buildSnapshot(),programs:window.koke?.renderer.info.programs.map(p=>({name:p.name,diagnostics:p.diagnostics}))})';
+  const mode = process.argv[2];
+  if (mode === 'reload') { await call('Page.reload', { ignoreCache: true }); await new Promise((r) => setTimeout(r, 7000)); }
+  const perfExpression = "import('/tests/browser-perf.js').then((module) => module.measurePlayback())";
+  const lodExpression = "import('/tests/browser-lod-check.js').then((module) => module.runLodChecks())";
+  const visualExpression = (view) => `import('/tests/browser-perf.js?review=1').then((module) => module.prepareVisualReview('${view}'))`;
+  const expression = mode === 'perf' ? perfExpression
+    : mode === 'lod' ? lodExpression
+    : mode === 'visual-overview' ? visualExpression('iso')
+    : mode === 'visual-macro' ? visualExpression('macro')
+    : process.env.KOKE_EXPRESSION || '({ready:!!window.koke,stats:window.koke?.diagnostics.buildSnapshot(),programs:window.koke?.renderer.info.programs.map(p=>({name:p.name,diagnostics:p.diagnostics}))})';
   const result = await call('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
-  console.log(JSON.stringify({ result, errors }, null, 2));
+  const payload = { result, errors };
+  if ((mode === 'perf'||mode === 'lod') && process.argv[3]) {
+    await writeFile(process.argv[3], JSON.stringify(payload, null, 2));
+    console.log(JSON.stringify({ written: process.argv[3], records: result.result?.value?.records?.length ?? 0, errors: errors.length }));
+  } else console.log(JSON.stringify(payload, null, 2));
   if (result.exceptionDetails || errors.length) process.exitCode = 1;
-  if (process.argv[3]) {
+  if (mode !== 'perf' && mode !== 'lod' && process.argv[3]) {
     await call('Runtime.evaluate', { expression: 'window.koke?.effects.render()' });
     let clip;
     if(process.argv[4]==='canvas') {

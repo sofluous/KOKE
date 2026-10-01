@@ -39,6 +39,14 @@ vec3 mossTone(vec2 uv, vec4 field, vec3 surfacePosition) {
 }
 `;
 
+export function computeShootLodFactor(distance, nearDistance=4, farDistance=10, minimum=0.45) {
+  if(!Number.isFinite(distance)||!Number.isFinite(nearDistance)||!Number.isFinite(farDistance)||!Number.isFinite(minimum))throw new RangeError('LOD values must be finite');
+  if(nearDistance<0||farDistance<=nearDistance||minimum<=0||minimum>1)throw new RangeError('Invalid LOD range');
+  const t=Math.max(0,Math.min(1,(distance-nearDistance)/(farDistance-nearDistance)));
+  const smooth=t*t*(3-2*t);
+  return 1-(1-minimum)*smooth;
+}
+
 export function createFieldRenderer(THREE, scene, meshGeometry, options = {}) {
   const mapSize = options.coverageMapSize || 128;
   let sample = options.sampleSurface || sampleRock;
@@ -61,7 +69,7 @@ export function createFieldRenderer(THREE, scene, meshGeometry, options = {}) {
     mossStressColor: { value: new THREE.Color('#4b2814') }, mossColorSource: { value: 1 },
     mossColorRange: { value: 1 }, mossColorInvert: { value: 0 }, mossTextureScale: { value: 18 },
     mossTextureStrength: { value: 0.22 }, mossScale: { value: 1 }, mossAspect: { value: 1 },
-    mossOrientation: { value: 1 },
+    mossOrientation: { value: 1 }, mossColonyVariation: { value: 0.85 }, mossPatchiness: { value: 0.7 },
     surfaceBaseColor: { value: new THREE.Color('#252c2e') }, surfaceAccentColor: { value: new THREE.Color('#586063') },
     surfaceTextureMode: { value: 3 }, surfaceTextureScale: { value: 14 }, surfaceTextureStrength: { value: 0.7 },
     surfaceRoughness: { value: 0.88 },
@@ -141,10 +149,13 @@ uniform float mossTime;
 uniform sampler2D mossSpecies;
 attribute vec2 anchorUv;
 attribute float variation;
+attribute float colonyVariation;
 attribute vec3 canopy;
 uniform float mossScale;
 uniform float mossAspect;
 uniform float mossOrientation;
+uniform float mossColonyVariation;
+uniform float mossPatchiness;
 varying vec2 vAnchorUv;
 varying float vTip;
 varying float vAlive;
@@ -152,8 +163,12 @@ varying vec3 vPlantPosition;
 `).replace('#include <begin_vertex>', /* glsl */ `
 #include <begin_vertex>
 vec4 f=texture2D(mossState,anchorUv);
-float alive=smoothstep(0.015,0.35,f.r);
+float emergenceStart=0.015+variation*0.14*mossPatchiness;
+float emergenceEnd=0.30+variation*0.12*mossPatchiness;
+float alive=smoothstep(emergenceStart,emergenceEnd,f.r);
 float mass=f.g;
+float colonyWidth=mix(1.0,mix(0.62,1.48,colonyVariation),mossColonyVariation);
+float colonyHeight=mix(1.0,mix(1.16,0.62,colonyVariation),mossColonyVariation);
 vec3 traits=texture2D(mossSpecies,anchorUv).rgb;
 traits/=max(0.001,traits.x+traits.y+traits.z);
 vAnchorUv=anchorUv; vTip=position.y; vAlive=alive; vPlantPosition=position;
@@ -161,20 +176,22 @@ vAnchorUv=anchorUv; vTip=position.y; vAlive=alive; vPlantPosition=position;
 float turn=(variation-0.5)*6.28318530718*mossOrientation;
 mat2 spin=mat2(cos(turn),-sin(turn),sin(turn),cos(turn));
 transformed.xz=spin*transformed.xz;
-transformed.xz*=mossScale*mossAspect;
-transformed.y*=mossScale;
+transformed.xz*=mossScale*mossAspect*colonyWidth;
+transformed.y*=mossScale*colonyHeight;
 transformed*=alive*(0.5+mass*0.55);
 transformed.y*=1.0-traits.y*0.5+traits.z*0.25;
 transformed.xz*=1.0+traits.y*0.45;
 transformed.y*=1.0-f.b*0.83;
 transformed.x+=position.y*position.y*(sin(mossTime*0.65+variation*30.0)*0.025+f.b*0.55)*alive;
 vec3 cushionNormal=normalize(vec3(canopy.x,canopy.y/0.64,canopy.z));
-vec3 tangent=normalize(cross(vec3(0.0,0.0,1.0),cushionNormal));
+vec3 referenceAxis=abs(cushionNormal.z)<0.9?vec3(0.0,0.0,1.0):vec3(1.0,0.0,0.0);
+vec3 tangent=normalize(cross(referenceAxis,cushionNormal));
 transformed=tangent*transformed.x+cushionNormal*transformed.y+cross(cushionNormal,tangent)*transformed.z;
 transformed+=canopy*vec3(alive*(0.6+mass*0.5),alive*(0.18+mass*0.85)*(1.0-f.b*0.65),alive*(0.6+mass*0.5));
 ` : /* glsl */ `
-transformed.xz*=alive*(0.6+mass*0.5);
-transformed.y*=alive*(0.18+mass*0.85)*(1.0-f.b*0.65);
+float edgeVariation=1.0+(sin(position.x*8.0+variation*23.0)+sin(position.z*11.0+variation*37.0))*0.075*mossColonyVariation;
+transformed.xz*=alive*(0.6+mass*0.5)*colonyWidth*edgeVariation;
+transformed.y*=alive*(0.18+mass*0.85)*(1.0-f.b*0.65)*colonyHeight;
 `));
       if (!depth) shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying vec2 vAnchorUv;\nvarying float vTip;\nvarying float vAlive;\nvarying vec3 vPlantPosition;\n'+surfaceGLSL)
         .replace('#include <color_fragment>', /* glsl */ `
@@ -200,7 +217,7 @@ normal=normalize(abs(det)*normal-sign(det)*(dFdx(pile)*r0+dFdy(pile)*r1));
   }
   function positionPlants(plant,count,isTuft) {
     const g=plant.geometry;
-    const uvs=new Float32Array(count*2), variations=new Float32Array(count), canopies=new Float32Array(count*3);
+    const uvs=new Float32Array(count*2), variations=new Float32Array(count), colonies=new Float32Array(count), canopies=new Float32Array(count*3);
     const dummy=new THREE.Object3D(), up=new THREE.Vector3(0,1,0), normal=new THREE.Vector3();
     for(let i=0;i<count;i++) {
       // Fibonacci anchors are stable, approximately equal-area, and independent of field resolution.
@@ -209,11 +226,11 @@ normal=normalize(abs(det)*normal-sign(det)*(dFdx(pile)*r0+dFdy(pile)*r1));
       const angle=parent*2.39996322973+hash(seedOffset+5)*Math.PI*2+(hash(parent*2.31+seedOffset+41)-0.5)*1.15;
       const d={x:Math.sqrt(1-y*y)*Math.cos(angle),y,z:Math.sqrt(1-y*y)*Math.sin(angle)};
       const {u,v}=uvAt(d), p=sample(u,v);
-      uvs.set([u,v],i*2);variations[i]=hash(i+37+seedOffset);
+      uvs.set([u,v],i*2);variations[i]=hash(i+37+seedOffset);colonies[i]=hash(parent*4.73+seedOffset+117);
       normal.set(p.normal.x,p.normal.y,p.normal.z);
       dummy.position.set(p.x,p.y,p.z).addScaledVector(normal,0.004);
       dummy.quaternion.setFromUnitVectors(up,normal);dummy.rotateY(hash(parent+4+seedOffset)*Math.PI*2);
-      const parentRadius=0.09+hash(parent+8+seedOffset)*0.12;
+      const parentRadius=0.07+hash(parent+8+seedOffset)*0.105;
       const radius=isTuft?0.075+hash(i+8+seedOffset)*0.04:parentRadius;
       dummy.scale.set(radius,isTuft?radius:radius*0.8,radius);
       if(isTuft){
@@ -224,6 +241,7 @@ normal=normalize(abs(det)*normal-sign(det)*(dFdx(pile)*r0+dFdy(pile)*r1));
     }
     g.setAttribute('anchorUv',new THREE.InstancedBufferAttribute(uvs,2));
     g.setAttribute('variation',new THREE.InstancedBufferAttribute(variations,1));
+    g.setAttribute('colonyVariation',new THREE.InstancedBufferAttribute(colonies,1));
     g.setAttribute('canopy',new THREE.InstancedBufferAttribute(canopies,3));
     plant.instanceMatrix.needsUpdate=true;
   }
@@ -255,12 +273,14 @@ normal=normalize(abs(det)*normal-sign(det)*(dFdx(pile)*r0+dFdy(pile)*r1));
     shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>', '#include <color_fragment>\nfloat r=length(gl_PointCoord-0.5); if(r>0.5) discard; diffuseColor.a*=smoothstep(0.5,0.1,r);');
   };
   const particles=new THREE.Points(particleGeometry,particleMaterial);particles.frustumCulled=false;group.add(particles);
-  let liveClumps=0;
+  let liveClumps=0,lastSporeRevision=-1,hasGrowth=true;
+  let adaptiveDetail=options.adaptiveDetail!==false,viewDistance=4,lodFactor=1;
   function syncRepresentation() {
-    clumps.visible=representation==='clumps'||representation==='shoots';
-    tufts.visible=!['surface','clumps'].includes(representation);
+    clumps.visible=hasGrowth&&(representation==='clumps'||representation==='shoots');
+    tufts.visible=hasGrowth&&!['surface','clumps'].includes(representation);
     const qualityLimit=quality==='low'?lowShootCount:maxShootCount;
-    tufts.count=Math.min(tufts.userData.capacity,Math.max(1,Math.round(qualityLimit*density)));
+    const detailFactor=representation==='shoots'?lodFactor:1;
+    tufts.count=Math.min(tufts.userData.capacity,Math.max(1,Math.round(qualityLimit*density*detailFactor)));
   }
   function ensureTuftCapacity(capacity) {
     if(tufts.userData.capacity>=capacity)return false;
@@ -276,10 +296,13 @@ normal=normalize(abs(det)*normal-sign(det)*(dFdx(pile)*r0+dFdy(pile)*r1));
       state.needsUpdate=true;species.needsUpdate=true;
       const uv=clumps.geometry.attributes.anchorUv;
       liveClumps=0;
+      hasGrowth=false;
+      for(let i=0;i<map.data.length;i+=4)if(map.data[i]>4){hasGrowth=true;break;}
       for(let i=0;i<clumps.count;i++){
         const x=Math.floor(uv.getX(i)*mapSize)%mapSize,y=Math.min(mapSize-1,Math.floor(uv.getY(i)*mapSize));
         if(map.data[(y*mapSize+x)*4]>4)liveClumps++;
       }
+      syncRepresentation();
       for(let i=0;i<dewAnchors.length;i++){
         const a=dewAnchors[i],k=(Math.min(mapSize-1,Math.floor(a.v*mapSize))*mapSize+Math.floor(a.u*mapSize))*4;
         const wet=map.data[k+3]/255,cover=map.data[k]/255;
@@ -293,6 +316,8 @@ normal=normalize(abs(det)*normal-sign(det)*(dFdx(pile)*r0+dFdy(pile)*r1));
     },
     update(time,spores) {
       uniforms.mossTime.value=time;
+      if(spores.revision===lastSporeRevision)return;
+      lastSporeRevision=spores.revision;
       let count=0;
       for(const p of spores.particles) if(p.state>0&&count<160){particlePositions.set([p.x,p.y,p.z],count*3);count++;}
       particleGeometry.setDrawRange(0,count);particleGeometry.attributes.position.needsUpdate=true;
@@ -318,7 +343,7 @@ normal=normalize(abs(det)*normal-sign(det)*(dFdx(pile)*r0+dFdy(pile)*r1));
       if(next.tipColor)uniforms.mossTipColor.value.set(next.tipColor);
       if(next.stressColor)uniforms.mossStressColor.value.set(next.stressColor);
       if(next.colorSource){const sources={uniform:0,species:1,health:2,thickness:3,moisture:4,height:5};if(!(next.colorSource in sources))throw new RangeError('Unknown color source');uniforms.mossColorSource.value=sources[next.colorSource];}
-      for(const [key,uniform] of [['colorRange','mossColorRange'],['textureScale','mossTextureScale'],['textureStrength','mossTextureStrength'],['scale','mossScale'],['aspect','mossAspect'],['orientation','mossOrientation']])if(next[key]!==undefined)uniforms[uniform].value=Number(next[key]);
+      for(const [key,uniform] of [['colorRange','mossColorRange'],['textureScale','mossTextureScale'],['textureStrength','mossTextureStrength'],['scale','mossScale'],['aspect','mossAspect'],['orientation','mossOrientation'],['colonyVariation','mossColonyVariation'],['patchiness','mossPatchiness']])if(next[key]!==undefined)uniforms[uniform].value=Number(next[key]);
       if(next.invert!==undefined)uniforms.mossColorInvert.value=next.invert?1:0;
     },
     setSurfaceAppearance(next={}) {
@@ -331,8 +356,16 @@ normal=normalize(abs(det)*normal-sign(det)*(dFdx(pile)*r0+dFdy(pile)*r1));
     },
     setDensity(value){density=Math.max(0.05,Math.min(1,Number(value)));syncRepresentation();},
     setQuality(value) {if(!['low','high'].includes(value))throw new RangeError('Unknown render quality');quality=value;if(value==='high'&&!['surface','clumps'].includes(representation))ensureTuftCapacity(maxShootCount);syncRepresentation();},
+    setAdaptiveDetail(value) {adaptiveDetail=Boolean(value);lodFactor=adaptiveDetail?computeShootLodFactor(viewDistance):1;syncRepresentation();},
+    setViewDistance(value) {
+      if(!Number.isFinite(value)||value<0)return;
+      viewDistance=value;
+      const next=adaptiveDetail?computeShootLodFactor(value):1;
+      if(Math.abs(next-lodFactor)<0.002)return;
+      lodFactor=next;syncRepresentation();
+    },
     setDew(value) {dew.visible=Boolean(value);},
     setWireframe(value) {material.wireframe=value;clumps.material.wireframe=value;tufts.material.wireframe=value;},
-    getStats() {return {clumpCount:liveClumps,maxClumps:clumps.count,tuftCount:tufts.visible?tufts.count:0,mapSize,representation,density};},
+    getStats() {return {clumpCount:liveClumps,maxClumps:clumps.count,tuftCount:tufts.visible?tufts.count:0,tuftCapacity:tufts.userData.capacity,geometryVisible:hasGrowth,mapSize,representation,density,adaptiveDetail,lodFactor:Number(lodFactor.toFixed(3)),viewDistance:Number(viewDistance.toFixed(2))};},
   };
 }

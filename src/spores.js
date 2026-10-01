@@ -13,6 +13,7 @@ export class SporeSimulation {
     for (const p of this.particles) p.state = 0;
     this.sequence = 0; this.emission = 0; this.released = 0; this.landed = 0; this.germinated = 0;
     this.lastEvent = null;
+    this.revision = (this.revision || 0) + 1;
   }
   release(index) {
     if (!Number.isInteger(index) || index < 0 || index >= this.field.cellCount) throw new RangeError('Invalid release surface index');
@@ -26,6 +27,7 @@ export class SporeSimulation {
     p.vx = n[j] * 0.17 + 0.12 + r * 0.13; p.vy = n[j + 1] * 0.2 + 0.22; p.vz = n[j + 2] * 0.17 + (r - 0.5) * 0.15;
     p.age = 0; p.state = 1; p.species = species; p.delay = 2 + r * 3;
     this.released += 1; this.lastEvent = { type: 'release', index, species, time: f.time };
+    this.revision += 1;
     return true;
   }
   signedDistance(x, y, z) {
@@ -33,6 +35,7 @@ export class SporeSimulation {
     return r < 1e-8 ? -1 : r - this.radiusAt({ x: x / r, y: y / r, z: z / r });
   }
   step(dt) {
+    let changed = false;
     this.emission += dt * 5;
     while (this.emission >= 1) {
       this.emission -= 1;
@@ -43,6 +46,7 @@ export class SporeSimulation {
     }
     for (const p of this.particles) {
       if (p.state === 0) continue;
+      changed = true;
       p.age += dt;
       if (p.state === 2) {
         if (p.age >= p.delay) {
@@ -72,6 +76,7 @@ export class SporeSimulation {
       }
       if (p.age > 12 || p.y < -3) p.state = 0;
     }
+    if (changed) this.revision += 1;
   }
   getStats() { return { active: this.particles.filter((p) => p.state > 0).length, capacity: this.particles.length, released: this.released, landed: this.landed, germinated: this.germinated, lastEvent: this.lastEvent }; }
 }
