@@ -1,5 +1,22 @@
 # PRODUCT
 
+## Graph-backed simulation adapter - 2026-10-02
+`GraphSimulationAdapter` turns each triangle in a mesh surface graph into one biological simulation cell. It carries three living species channels plus vitality, local moisture, biomass, age, stress, three species-specific dormant reserves and dead matter. Its semantic `getState()` contract gives later render-anchor and interaction work direct access to these channels without depending on the radial UV texture layout.
+
+The adapter uses shared-edge graph neighbors for diffusion and colonization, graph normals and height for habitat, and triangle area for statistics. Disconnected components therefore remain biologically isolated even when their surfaces are close in world space. It shares fixed-step timing, environment validation and species profiles with the active radial field through a neutral environment module. Deterministic reset, drought collapse, dormant recovery and species conversion are implemented, but the adapter is not yet connected to the renderer, pointer tools, spores or product UI.
+
+## Mesh surface-graph prototype - 2026-10-02
+KOKE now has a topology-general mesh contract alongside the active radial field. It welds indexed or expanded triangle vertices, derives shared-edge adjacency, labels disconnected components, reports boundary, non-manifold and degenerate topology, and provides deterministic area-weighted barycentric samples. Surface locations retain triangle, barycentric and component identity rather than relying on spherical UV coordinates.
+
+`MeshSurfaceField` proves adjacency-based painting and propagation on that graph. A brush starts from the triangle supplied by a future raycast and follows centroid-weighted graph paths, so close folded layers and disconnected surfaces do not exchange values unless they share mesh edges. GLB extraction is now available independently through `importMeshGraphGlb`; the production UI continues to call `importRadialGlb`, preserving its closed star-shaped validation.
+
+`MeshSurfaceField` remains a small scalar topology proof. The graph-backed biological adapter now supplies the lifecycle layer above it, while rendering, spores and interaction remain separate future deliveries. See [the prototype record](data/SURFACE_GRAPH_PROTOTYPE_2026-10-02.md) and [the adapter record](data/GRAPH_SIMULATION_ADAPTER_2026-10-02.md).
+
+## Species-specific geometry - 2026-10-02
+Cushion, Sheet and Feather moss now carry explicit render profiles shared from the biological catalog into the instanced shader. Cushion keeps compact upright shoots and rounded mound bases. Sheet uses broad low shoots with directional creep and a subdued cushion layer so the continuous mat dominates. Feather uses narrow tall shoots, smaller bases and finer microtexture. Mixed-species cells blend these dimensions by their existing species weights rather than snapping between forms.
+
+The profiles change vertex proportions, canopy spread, lateral displacement, clump dimensions and surface breakup. They do not add instances, triangles, materials or draw calls. `Convert existing` therefore updates established colony geometry as soon as the species texture is refreshed while preserving the existing lifecycle state.
+
 ## Distance-sensitive shoot detail - 2026-10-01
 Detailed shoots now use a smooth camera-distance factor while Adaptive shoots is enabled. Macro views at four scene units or closer retain the full density requested by the Density and Low/High controls. From four to ten units, only the active instance count declines; the factor bottoms out at 45%. Stable instance anchors, allocated capacity, cards, clumps and biological state do not change, so camera movement does not rebuild geometry or alter growth.
 

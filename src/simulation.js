@@ -13,6 +13,7 @@ export const mossTypeCatalog = [
     slopePreference: 0.58,
     spreadStrength: 0.86,
     clumpProfile: { scale: 1, verticality: 0.88, patchiness: 0.62 },
+    renderProfile: { shootWidth: 1, shootHeight: 0.88, creep: 0.08, clumpWidth: 1, clumpHeight: 1, microScale: 1 },
   },
   {
     id: 1,
@@ -26,6 +27,7 @@ export const mossTypeCatalog = [
     slopePreference: 0.82,
     spreadStrength: 0.52,
     clumpProfile: { scale: 1.18, verticality: 0.42, patchiness: 0.46 },
+    renderProfile: { shootWidth: 1.35, shootHeight: 0.25, creep: 0.58, clumpWidth: 0.82, clumpHeight: 0.1, microScale: 0.72 },
   },
   {
     id: 2,
@@ -39,6 +41,7 @@ export const mossTypeCatalog = [
     slopePreference: 0.42,
     spreadStrength: 0.96,
     clumpProfile: { scale: 1.06, verticality: 1.18, patchiness: 0.74 },
+    renderProfile: { shootWidth: 0.68, shootHeight: 1.52, creep: 0.18, clumpWidth: 0.8, clumpHeight: 0.62, microScale: 1.65 },
   },
 ];
 export const mossSpeciesCatalog = mossTypeCatalog;

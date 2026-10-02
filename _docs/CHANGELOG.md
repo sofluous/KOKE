@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 2026-10-02 - graph-backed simulation adapter
+- Added a topology-general simulation adapter with per-triangle species, vitality, moisture, biomass, age, stress, dormant-reserve and dead-matter state.
+- Added deterministic mature, seed and bare initialization; shared-edge lifecycle propagation; drought collapse; dormant recovery; species conversion; area-weighted statistics; and frame-rate-independent fixed stepping.
+- Extracted fixed-step and environment defaults/validation into a neutral shared module used by both radial and graph simulations.
+- Kept the adapter outside the renderer, interaction, spore and product UI paths pending their staged deliveries.
+- Added focused lifecycle, component-isolation, validation and fixed-time regressions. Production syntax checks and all 32 automated tests pass.
+
+## 2026-10-02 - mesh surface-graph prototype
+- Added a topology-general mesh graph with vertex welding, shared-edge adjacency, connected components, topology diagnostics and deterministic area-weighted surface samples.
+- Added a prototype scalar graph field with adjacency-following painting and propagation that cannot cross disconnected surfaces.
+- Split general `importMeshGraphGlb` extraction from the production `importRadialGlb` validation path; successful radial imports now retain graph metadata and show component counts.
+- Added a folded/disconnected regression fixture. All 31 automated tests pass.
+
+## 2026-10-02 - species-specific moss geometry
+- Added explicit render profiles to Cushion, Sheet and Feather moss and passed them from the biological catalog into the active instanced renderer.
+- Added species-weighted shoot width, height, lateral creep, canopy spread, clump proportions and microtexture scale without adding draw calls or geometry.
+- Tuned Sheet moss after deterministic visual review so its low continuous carpet dominates over cushion bases.
+- Added a morphology contract regression and matched Chrome captures. All 30 automated tests pass and all three shaders render without reported errors.
+
 ## 2026-10-01 - adaptive detailed-shoot LOD
 - Added smooth distance-sensitive instance counts for Detailed shoots, retaining full macro density and reducing overview counts to a 45% floor without rebuilding geometry.
 - Added an enabled-by-default Adaptive shoots switch under Render; disabling it restores the exact manual Low/High and Density budget.

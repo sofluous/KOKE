@@ -1,5 +1,20 @@
 # QA
 
+## Graph simulation adapter verification - 2026-10-02
+Production syntax checks and all 32 automated tests pass. The adapter regression verifies the complete semantic channel contract and array dimensions, propagation around a folded component without transfer to a nearby disconnected sheet, biomass and age preservation during species conversion, drought-created dormant reserves and dead matter, moisture-driven recovery without species contamination, deterministic seeded evolution, and identical fixed-time results at 30, 60 and 120 fps.
+
+Inputs reject invalid graphs, seeds, environment values, light directions, species identifiers and step durations. State is finite after the exercised lifecycle runs. Per-step work scales with triangle and shared-edge counts and uses preallocated typed arrays; at the current 10,000-triangle import limit this remains an isolated CPU path and has not yet received browser frame-time profiling. Renderer attachment, face-index brush input, mesh spore collision and active general-model import remain outside this verification.
+
+## Mesh surface-graph prototype verification - 2026-10-02
+Production syntax checks and all 31 tests pass. Chrome 153 also loads the application with the graph module on the static import path without browser, console or shader errors. The folded fixture contains a four-triangle right-angle strip and a second two-triangle sheet only 0.04 units away. The graph reports two components and the expected shared-edge chain. A full-radius brush changes all four connected triangles and neither nearby disconnected triangle; forty diffusion steps reach the end of the folded component while the second sheet stays exactly zero. Indexed and expanded geometry produce the same component and welded-vertex counts.
+
+The graph validates finite positions, indices, triangle limits, weld tolerance, barycentric locations, sample seeds, brush settings and field rates. It reports boundaries, non-manifold edges and degenerates rather than silently treating them as closed manifold topology. Current limitations are deliberate: one biological cell per source triangle makes resolution tessellation-dependent; centroid path lengths approximate geodesic distance; graph state does not yet feed the renderer, pointer tools or spores.
+
+## Species morphology verification - 2026-10-02
+Production syntax checks and all 30 tests pass. The morphology regression verifies that every species exposes a complete positive finite render profile and preserves the intended geometric relationships: Sheet is broader, lower and more lateral than Cushion; Feather is narrower, taller and finer. Chrome 153 compiled the revised surface and depth shaders without browser, console or shader errors.
+
+Deterministic Macro captures use the same seed, mature field, camera, High detail, density 0.5 and disabled adaptation: [Cushion](data/MORPH_CUSHION_2026-10-02.png), [Sheet](data/MORPH_SHEET_2026-10-02.png), and [Feather](data/MORPH_FEATHER_2026-10-02.png). Each reports 30,000 shoots, five draw calls and 363,710 triangles. Visual differences therefore come from profile-driven vertex transforms rather than extra geometry. The final Sheet pass was reduced after review so its continuous carpet dominates instead of enlarged round cushion bases.
+
 ## Adaptive shoot-detail verification - 2026-10-01
 Production syntax checks and all 29 tests pass. The new unit check verifies finite inputs, range validation, endpoint clamping and monotonic smooth reduction. A focused Chrome 153 check passed five assertions with no browser or shader errors: Macro retained 30,000 shoots at distance 3.66; Isometric reduced them to 14,665 at distance 9.03; disabling adaptation restored 30,000; Crossed cards remained at 30,000; and all compiled GPU programs remained runnable. See [the browser result](data/LOD_BROWSER_CHECK_2026-10-01.json).
 

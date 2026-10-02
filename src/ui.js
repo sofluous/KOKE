@@ -284,7 +284,7 @@ export function createUI(initialState, callbacks) {
   surfaceFileInput?.addEventListener('change',async()=>{
     const file=surfaceFileInput.files?.[0];if(!file)return;
     if(surfaceImportStatus)surfaceImportStatus.textContent=`Importing ${file.name}…`;
-    try{const result=await callbacks.onImportSurface(file);setImportedSurface(result.name);if(surfaceImportStatus)surfaceImportStatus.textContent=`${result.name} · ${result.triangleCount.toLocaleString()} triangles`;}
+    try{const result=await callbacks.onImportSurface(file);setImportedSurface(result.name);if(surfaceImportStatus)surfaceImportStatus.textContent=`${result.name} · ${result.triangleCount.toLocaleString()} triangles · ${result.topology.componentCount} component${result.topology.componentCount===1?'':'s'}`;}
     catch(error){if(surfaceImportStatus)surfaceImportStatus.textContent=error.message;}
     finally{surfaceFileInput.value='';}
   });

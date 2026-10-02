@@ -28,9 +28,13 @@ try {
   if (mode === 'reload') { await call('Page.reload', { ignoreCache: true }); await new Promise((r) => setTimeout(r, 7000)); }
   const perfExpression = "import('/tests/browser-perf.js').then((module) => module.measurePlayback())";
   const lodExpression = "import('/tests/browser-lod-check.js').then((module) => module.runLodChecks())";
+  const morphologyExpression = (speciesId) => `import('/tests/browser-morphology-check.js').then((module) => module.prepareMorphology(${speciesId}))`;
   const visualExpression = (view) => `import('/tests/browser-perf.js?review=1').then((module) => module.prepareVisualReview('${view}'))`;
   const expression = mode === 'perf' ? perfExpression
     : mode === 'lod' ? lodExpression
+    : mode === 'morph-cushion' ? morphologyExpression(0)
+    : mode === 'morph-sheet' ? morphologyExpression(1)
+    : mode === 'morph-feather' ? morphologyExpression(2)
     : mode === 'visual-overview' ? visualExpression('iso')
     : mode === 'visual-macro' ? visualExpression('macro')
     : process.env.KOKE_EXPRESSION || '({ready:!!window.koke,stats:window.koke?.diagnostics.buildSnapshot(),programs:window.koke?.renderer.info.programs.map(p=>({name:p.name,diagnostics:p.diagnostics}))})';

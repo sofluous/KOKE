@@ -55,6 +55,7 @@ const simulation = new FieldSimulation(surface, {
 const speciesCatalog = simulation.getSpeciesCatalog();
 const mossRenderer = createFieldRenderer(THREE, scene, meshGeometry, {
   speciesPalette: speciesCatalog.map((species) => species.color),
+  speciesProfiles: speciesCatalog.map((species) => species.renderProfile),
   coverageMapSize: simulation.mapSize,
   sampleSurface: startupDefinition.sample,
   seed:startupSeed,
@@ -181,7 +182,7 @@ const ui = createUI(
       const result=await importRadialGlb(THREE,file);importedSurface?.geometry.dispose();importedSurface=result;
       simulation.setRunning(false);ui.setPlaying(false);spores.reset();
       simulation.setSurface(result.sample);mossRenderer.setSurface(result.sample,result.geometry.clone());mossRenderer.setCoverage(simulation.fillCoverageMap());
-      ui.state.surface='imported';diagnostics?.pushLog(`Imported radial GLB: ${result.name} (${result.triangleCount} triangles).`);
+      ui.state.surface='imported';diagnostics?.pushLog(`Imported radial GLB: ${result.name} (${result.triangleCount} triangles, ${result.topology.componentCount} graph component${result.topology.componentCount===1?'':'s'}).`);
       return result;
     },
     onAppearance(key,value) {

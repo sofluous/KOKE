@@ -17,7 +17,13 @@ The second organic/performance pass adds adjustable colony-scale variation and s
 
 The Chrome review is now recorded at a fixed 1920 x 1080 buffer. Reference-led tuning reduced the repeated spherical cushion effect without adding geometry. Surface mat and cards generally retained a 16.7 ms median on Intel UHD 620, while detailed shoots produced the least reliable frame times.
 
-Distance-sensitive shoot detail is delivered. Macro views retain the requested Low/High and Density budget, while overview distances smoothly reduce only Detailed-shoot instances to as little as 45%. The next renderer item is stronger species-specific geometry so Cushion, Sheet and Feather moss remain visually distinct beyond color and growth behavior. General topology remains after that focused improvement.
+Distance-sensitive shoot detail is delivered. Macro views retain the requested Low/High and Density budget, while overview distances smoothly reduce only Detailed-shoot instances to as little as 45%.
+
+Species-specific geometry is also delivered without increasing draw calls or geometry budgets. Cushion is compact and mounded, Sheet is low and creeping, and Feather is narrow and upright; mixed colonies blend these profiles.
+
+The first topology-general delivery is complete as an isolated mesh surface graph. It proves welded triangle adjacency, component isolation, area-weighted samples, graph painting and graph propagation on a folded/disconnected fixture while leaving the radial product path intact.
+
+The graph-backed simulation adapter is now delivered. Each triangle carries species, vitality, moisture, biomass, age, stress, dormant reserves and dead matter using the same fixed-step environment and species contracts as the active field. Lifecycle propagation stays within connected graph components. The next delivery is stable triangle/barycentric render anchors, followed by face-index painting and mesh collision. Only after those pieces agree should the UI accept folded or porous imports as active scenes.
 
 ## Delivery update - 2026-09-11
 - Implemented field correctness repairs: finite validated inputs, unified mapping, updated habitats, species preservation, area-weighted statistics, and fixed-time evolution.

@@ -1,5 +1,6 @@
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createRadialSurface } from './radial-surface.js';
+import { createMeshSurfaceGraph } from './mesh-surface-graph.js';
 
 const MAX_TRIANGLES=10_000;
 
@@ -7,7 +8,7 @@ function parseGlb(loader,buffer) {
   return new Promise((resolve,reject)=>loader.parse(buffer,'',resolve,reject));
 }
 
-export async function importRadialGlb(THREE,file) {
+export async function importMeshGraphGlb(THREE,file) {
   if(!(file instanceof File)||!file.name.toLowerCase().endsWith('.glb'))throw new TypeError('Choose a self-contained .glb file');
   const gltf=await parseGlb(new GLTFLoader(),await file.arrayBuffer());
   gltf.scene.updateMatrixWorld(true);
@@ -33,7 +34,14 @@ export async function importRadialGlb(THREE,file) {
   const scale=4.4/extent;
   for(let i=0;i<values.length;i+=3){values[i]=(values[i]-cx)*scale;values[i+1]=(values[i+1]-cy)*scale;values[i+2]=(values[i+2]-cz)*scale;}
   const positions=new Float32Array(values);
-  const radial=createRadialSurface(positions);
+  const graph=createMeshSurfaceGraph(positions,{maxTriangles:MAX_TRIANGLES});
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));geometry.computeVertexNormals();geometry.computeBoundingSphere();
-  return {name:file.name.replace(/\.glb$/i,''),geometry,sample:radial.sample,triangleCount,coverage:radial.coverage};
+  return {name:file.name.replace(/\.glb$/i,''),geometry,triangleCount,graph,
+    topology:{vertexCount:graph.vertexCount,componentCount:graph.componentCount,boundaryEdgeCount:graph.boundaryEdgeCount,nonManifoldEdgeCount:graph.nonManifoldEdgeCount,degenerateTriangleCount:graph.degenerateTriangleCount}};
+}
+
+export async function importRadialGlb(THREE,file) {
+  const result=await importMeshGraphGlb(THREE,file);
+  const radial=createRadialSurface(result.geometry.attributes.position.array);
+  return {...result,sample:radial.sample,coverage:radial.coverage};
 }

@@ -5,6 +5,7 @@ This folder tracks product intent, delivery stages, and quality checks for the m
 ## Current delivery
 - [Studio proposal and staged delivery](STUDIO_PROPOSAL.md): UI organization, models, moss styles, and exports; Stage 1 authorized.
 - [Moss redesign delivery notes](data/MOSS_IMPLEMENTATION_2026-09-11.md): behavior, usage, checks, images, and limitations.
+- [Graph simulation adapter](data/GRAPH_SIMULATION_ADAPTER_2026-10-02.md): topology-general lifecycle state contract and staged integration boundary.
 - Current regression commands: `npm test` and `npm run check`.
 - The audit/probes below are the historical baseline before the redesign.
 

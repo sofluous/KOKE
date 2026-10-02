@@ -1,21 +1,8 @@
 import { evaluateHabitat, mossSpeciesCatalog } from './simulation.js';
 import { clamp, noise, hash, uvAt, sampleRock } from './substrate.js';
+import { FIXED_STEP, defaultFieldEnvironment, createFieldEnvironment } from './simulation-environment.js';
 
-export const FIXED_STEP = 1 / 20;
-export const defaultFieldEnvironment = {
-  moisture: 0.72, slopeBias: 0.55, lightInfluence: 0.66,
-  growthRate: 0.55, decayRate: 0.42, diffusionRate: 0.3,
-  colonization: 0.55, gravityCreep: 0.28, cycleSpeed: 0.28,
-};
-function environmentFrom(input) {
-  const out = { ...defaultFieldEnvironment };
-  for (const [key, value] of Object.entries(input)) {
-    if (!(key in out)) throw new RangeError('Unknown environment setting: ' + key);
-    if (!Number.isFinite(value) || value < 0 || value > 1) throw new RangeError(key + ' must be between 0 and 1');
-    out[key] = value;
-  }
-  return out;
-}
+export { FIXED_STEP, defaultFieldEnvironment } from './simulation-environment.js';
 export class FieldSimulation {
   constructor(surface = {}, options = {}) {
     this.sampleSurface = surface.sampleSurface || sampleRock;
@@ -32,7 +19,7 @@ export class FieldSimulation {
       z: hash(this.seed + 2.73) * 64,
       life: hash(this.seed + 4.91) * 2048,
     };
-    this.environment = environmentFrom(options.environment || {});
+    this.environment = createFieldEnvironment(options.environment || {});
     this.cellCount = this.mapSize ** 2;
     this.channelsA = new Float32Array(this.cellCount * 4);
     this.channelsB = new Float32Array(this.cellCount * 4);
@@ -130,7 +117,7 @@ export class FieldSimulation {
     }
     this.dirty=true;return changed;
   }
-  setEnvironment(partial) { this.environment = environmentFrom({ ...this.environment, ...partial }); this._buildStaticMaps(); }
+  setEnvironment(partial) { this.environment = createFieldEnvironment({ ...this.environment, ...partial }); this._buildStaticMaps(); }
   setLightDirection(d) {
     const length = Math.hypot(d.x, d.y, d.z);
     if (!Number.isFinite(length) || length < 1e-8) throw new RangeError('Light direction must be finite and nonzero');

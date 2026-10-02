@@ -56,6 +56,12 @@ export function createFieldRenderer(THREE, scene, meshGeometry, options = {}) {
   let quality=options.initialQuality==='low'?'low':'high';
   let density=Math.max(0.05,Math.min(1,Number(options.initialDensity) || 1));
   let representation=['surface','triangles','diamonds','cards','clumps','shoots'].includes(options.initialRepresentation)?options.initialRepresentation:'shoots';
+  const renderProfiles=options.speciesProfiles||[
+    {shootWidth:1,shootHeight:0.88,creep:0.08,clumpWidth:1,clumpHeight:1,microScale:1},
+    {shootWidth:1.35,shootHeight:0.25,creep:0.58,clumpWidth:0.82,clumpHeight:0.1,microScale:0.72},
+    {shootWidth:0.68,shootHeight:1.52,creep:0.18,clumpWidth:0.8,clumpHeight:0.62,microScale:1.65},
+  ];
+  const profileVector=(key,fallback)=>new THREE.Vector3(...[0,1,2].map((index)=>Number(renderProfiles[index]?.[key])||fallback));
   const makeTexture = () => {
     const t = new THREE.DataTexture(new Uint8Array(mapSize * mapSize * 4), mapSize, mapSize);
     t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter;
@@ -70,6 +76,9 @@ export function createFieldRenderer(THREE, scene, meshGeometry, options = {}) {
     mossColorRange: { value: 1 }, mossColorInvert: { value: 0 }, mossTextureScale: { value: 18 },
     mossTextureStrength: { value: 0.22 }, mossScale: { value: 1 }, mossAspect: { value: 1 },
     mossOrientation: { value: 1 }, mossColonyVariation: { value: 0.85 }, mossPatchiness: { value: 0.7 },
+    mossShootWidth: { value: profileVector('shootWidth',1) }, mossShootHeight: { value: profileVector('shootHeight',1) },
+    mossCreep: { value: profileVector('creep',0.1) }, mossClumpWidth: { value: profileVector('clumpWidth',1) },
+    mossClumpHeight: { value: profileVector('clumpHeight',1) }, mossMicroScale: { value: profileVector('microScale',1) },
     surfaceBaseColor: { value: new THREE.Color('#252c2e') }, surfaceAccentColor: { value: new THREE.Color('#586063') },
     surfaceTextureMode: { value: 3 }, surfaceTextureScale: { value: 14 }, surfaceTextureStrength: { value: 0.7 },
     surfaceRoughness: { value: 0.88 },
@@ -156,10 +165,17 @@ uniform float mossAspect;
 uniform float mossOrientation;
 uniform float mossColonyVariation;
 uniform float mossPatchiness;
+uniform vec3 mossShootWidth;
+uniform vec3 mossShootHeight;
+uniform vec3 mossCreep;
+uniform vec3 mossClumpWidth;
+uniform vec3 mossClumpHeight;
+uniform vec3 mossMicroScale;
 varying vec2 vAnchorUv;
 varying float vTip;
 varying float vAlive;
 varying vec3 vPlantPosition;
+varying float vSpeciesMicroScale;
 `).replace('#include <begin_vertex>', /* glsl */ `
 #include <begin_vertex>
 vec4 f=texture2D(mossState,anchorUv);
@@ -171,36 +187,41 @@ float colonyWidth=mix(1.0,mix(0.62,1.48,colonyVariation),mossColonyVariation);
 float colonyHeight=mix(1.0,mix(1.16,0.62,colonyVariation),mossColonyVariation);
 vec3 traits=texture2D(mossSpecies,anchorUv).rgb;
 traits/=max(0.001,traits.x+traits.y+traits.z);
-vAnchorUv=anchorUv; vTip=position.y; vAlive=alive; vPlantPosition=position;
+vAnchorUv=anchorUv; vTip=position.y; vAlive=alive; vPlantPosition=position; vSpeciesMicroScale=dot(traits,mossMicroScale);
 ` + (isTuft ? /* glsl */ `
 float turn=(variation-0.5)*6.28318530718*mossOrientation;
 mat2 spin=mat2(cos(turn),-sin(turn),sin(turn),cos(turn));
 transformed.xz=spin*transformed.xz;
-transformed.xz*=mossScale*mossAspect*colonyWidth;
-transformed.y*=mossScale*colonyHeight;
+float speciesWidth=dot(traits,mossShootWidth);
+float speciesHeight=dot(traits,mossShootHeight);
+float speciesCreep=dot(traits,mossCreep);
+vec2 creepDirection=vec2(cos(turn),sin(turn));
+transformed.xz*=mossScale*mossAspect*colonyWidth*speciesWidth;
+transformed.y*=mossScale*colonyHeight*speciesHeight;
+transformed.xz+=creepDirection*position.y*speciesCreep*mossScale;
 transformed*=alive*(0.5+mass*0.55);
-transformed.y*=1.0-traits.y*0.5+traits.z*0.25;
-transformed.xz*=1.0+traits.y*0.45;
 transformed.y*=1.0-f.b*0.83;
 transformed.x+=position.y*position.y*(sin(mossTime*0.65+variation*30.0)*0.025+f.b*0.55)*alive;
 vec3 cushionNormal=normalize(vec3(canopy.x,canopy.y/0.64,canopy.z));
 vec3 referenceAxis=abs(cushionNormal.z)<0.9?vec3(0.0,0.0,1.0):vec3(1.0,0.0,0.0);
 vec3 tangent=normalize(cross(referenceAxis,cushionNormal));
 transformed=tangent*transformed.x+cushionNormal*transformed.y+cross(cushionNormal,tangent)*transformed.z;
-transformed+=canopy*vec3(alive*(0.6+mass*0.5),alive*(0.18+mass*0.85)*(1.0-f.b*0.65),alive*(0.6+mass*0.5));
+transformed+=canopy*vec3(alive*(0.6+mass*0.5)*speciesWidth,alive*(0.18+mass*0.85)*(1.0-f.b*0.65)*speciesHeight,alive*(0.6+mass*0.5)*speciesWidth);
 ` : /* glsl */ `
 float edgeVariation=1.0+(sin(position.x*8.0+variation*23.0)+sin(position.z*11.0+variation*37.0))*0.075*mossColonyVariation;
-transformed.xz*=alive*(0.6+mass*0.5)*colonyWidth*edgeVariation;
-transformed.y*=alive*(0.18+mass*0.85)*(1.0-f.b*0.65)*colonyHeight;
+float speciesClumpWidth=dot(traits,mossClumpWidth);
+float speciesClumpHeight=dot(traits,mossClumpHeight);
+transformed.xz*=alive*(0.6+mass*0.5)*colonyWidth*edgeVariation*speciesClumpWidth;
+transformed.y*=alive*(0.18+mass*0.85)*(1.0-f.b*0.65)*colonyHeight*speciesClumpHeight;
 `));
-      if (!depth) shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying vec2 vAnchorUv;\nvarying float vTip;\nvarying float vAlive;\nvarying vec3 vPlantPosition;\n'+surfaceGLSL)
+      if (!depth) shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying vec2 vAnchorUv;\nvarying float vTip;\nvarying float vAlive;\nvarying vec3 vPlantPosition;\nvarying float vSpeciesMicroScale;\n'+surfaceGLSL)
         .replace('#include <color_fragment>', /* glsl */ `
 #include <color_fragment>
 if(vAlive<0.005) discard;
 vec4 f=texture2D(mossState,vAnchorUv);
 vec3 tone=mossTone(vAnchorUv,f,vPlantPosition);
 tone=mix(tone,mossStressColor,f.b*0.92);
-float grainDetail=noise3(vPlantPosition*95.0);
+float grainDetail=noise3(vPlantPosition*95.0*vSpeciesMicroScale);
 diffuseColor.rgb*=tone*(0.28+clamp(vTip,0.0,1.0)*0.32+grainDetail*0.65);
 `);
       if(!depth && !isTuft) shader.fragmentShader=shader.fragmentShader.replace('#include <normal_fragment_begin>', `
