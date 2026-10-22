@@ -1,6 +1,7 @@
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { createRadialSurface } from './radial-surface.js';
 import { createMeshSurfaceGraph } from './mesh-surface-graph.js';
+import { validateMeshGraphGeometry } from './mesh-collision.js';
 
 const MAX_TRIANGLES=10_000;
 
@@ -36,7 +37,9 @@ export async function importMeshGraphGlb(THREE,file) {
   const positions=new Float32Array(values);
   const graph=createMeshSurfaceGraph(positions,{maxTriangles:MAX_TRIANGLES});
   const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.BufferAttribute(positions,3));geometry.computeVertexNormals();geometry.computeBoundingSphere();
+  const collision=validateMeshGraphGeometry(geometry,graph);
   return {name:file.name.replace(/\.glb$/i,''),geometry,triangleCount,graph,
+    collision,
     topology:{vertexCount:graph.vertexCount,componentCount:graph.componentCount,boundaryEdgeCount:graph.boundaryEdgeCount,nonManifoldEdgeCount:graph.nonManifoldEdgeCount,degenerateTriangleCount:graph.degenerateTriangleCount}};
 }
 

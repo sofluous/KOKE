@@ -1,6 +1,7 @@
 import { evaluateHabitat, mossSpeciesCatalog } from './simulation.js';
 import { FIXED_STEP, createFieldEnvironment } from './simulation-environment.js';
 import { clamp, hash, noise } from './substrate.js';
+import { visitTrianglesWithinRadius } from './mesh-surface-graph.js';
 
 const STATE_CHANNELS = Object.freeze([
   'species',
@@ -83,7 +84,12 @@ export class GraphSimulationAdapter {
     this.time = 0;
     this.accumulator = 0;
     this.totalTicks = 0;
+    this.lastBatchSize = 0;
+    this.lastTickMs = 0;
     this.collapses = 0;
+    this.germinations = 0;
+    this.paintOps = 0;
+    this.lastPaintCount = 0;
     this.revision = 0;
     this.running = false;
     this._buildSurfaceState();
@@ -157,7 +163,12 @@ export class GraphSimulationAdapter {
     this.time = 0;
     this.accumulator = 0;
     this.totalTicks = 0;
+    this.lastBatchSize = 0;
+    this.lastTickMs = 0;
     this.collapses = 0;
+    this.germinations = 0;
+    this.paintOps = 0;
+    this.lastPaintCount = 0;
 
     if (mode !== 'bare') for (let i = 0; i < this.cellCount; i += 1) {
       const j = i * 3;
@@ -228,8 +239,68 @@ export class GraphSimulationAdapter {
     return changed;
   }
 
+  paintFromFace(faceIndex, options = {}) {
+    const radius = options.radius ?? 0.3;
+    const strength = options.strength ?? 0.7;
+    const speciesId = options.speciesId ?? 0;
+    if (!Number.isFinite(strength) || strength < 0 || strength > 1) throw new RangeError('Brush strength must be between zero and one');
+    validateSpecies(speciesId, this.speciesCount);
+    let changed = 0;
+    visitTrianglesWithinRadius(this.graph, faceIndex, radius, (triangle, distance, falloff) => {
+      const influence = strength * falloff;
+      if (influence <= 0) return;
+      const base = triangle * this.speciesCount;
+      let total = 0;
+      for (let species = 0; species < this.speciesCount; species += 1) total += this.species[base + species];
+      if (options.erase) {
+        let mutation = this.biomass[triangle] + this.deadMatter[triangle] + this.vitality[triangle];
+        for (let species = 0; species < this.speciesCount; species += 1) {
+          mutation += this.species[base + species] + this.dormantReserves[base + species];
+          this.species[base + species] *= 1 - influence;
+          this.dormantReserves[base + species] *= 1 - influence;
+        }
+        this.biomass[triangle] *= 1 - influence;
+        this.deadMatter[triangle] *= 1 - influence;
+        total *= 1 - influence;
+        this.vitality[triangle] = total > 1e-6 ? this.vitality[triangle] * (1 - influence) : 0;
+        if (mutation > 1e-8) changed += 1;
+      } else {
+        const addition = influence * Math.max(0, 1 - total);
+        if (addition <= 1e-8) return;
+        this.species[base + speciesId] += addition;
+        this.moisture[triangle] = Math.max(this.moisture[triangle], influence);
+        this.vitality[triangle] = Math.max(this.vitality[triangle], influence);
+        if (total < 0.035) this.age[triangle] = 0;
+        changed += 1;
+      }
+    });
+    if (changed) {
+      this.paintOps += 1;
+      this.lastPaintCount = changed;
+      this.revision += 1;
+    }
+    return changed;
+  }
+
+  germinate(faceIndex, speciesId) {
+    if (!Number.isInteger(faceIndex) || faceIndex < 0 || faceIndex >= this.cellCount) throw new RangeError('Invalid germination face');
+    validateSpecies(speciesId, this.speciesCount);
+    if (this.moisture[faceIndex] < 0.38 || this.habitat[faceIndex] < 0.35) return false;
+    const base = faceIndex * this.speciesCount;
+    let total = 0;
+    for (let species = 0; species < this.speciesCount; species += 1) total += this.species[base + species];
+    if (total > 0.65) return false;
+    this.species[base + speciesId] += 0.07 * (1 - total);
+    this.vitality[faceIndex] = 1;
+    this.age[faceIndex] = 0;
+    this.germinations += 1;
+    this.revision += 1;
+    return true;
+  }
+
   step(dt = FIXED_STEP) {
     if (!Number.isFinite(dt) || dt <= 0 || dt > 0.25) throw new RangeError('Step duration must be between zero and 0.25 seconds');
+    const startedAt = performance.now();
     const environment = this.environment;
     const current = this.species;
     const next = this.nextSpecies;
@@ -297,8 +368,15 @@ export class GraphSimulationAdapter {
     this.nextSpecies = current;
     this.time += dt;
     this.totalTicks += 1;
+    this.lastBatchSize = this.cellCount;
+    this.lastTickMs = performance.now() - startedAt;
     this.revision += 1;
+    this.onStep?.(dt);
     return this.getState();
+  }
+
+  stepBatch() {
+    return this.step(FIXED_STEP);
   }
 
   getState() {
@@ -321,7 +399,7 @@ export class GraphSimulationAdapter {
   }
 
   getStats() {
-    let area = 0, biomass = 0, living = 0, dormant = 0, deadMatter = 0, nonfinite = 0;
+    let area = 0, biomass = 0, living = 0, active = 0, dormant = 0, deadMatter = 0, nonfinite = 0;
     for (let i = 0; i < this.cellCount; i += 1) {
       const weight = this.graph.areas[i];
       const base = i * this.speciesCount;
@@ -333,6 +411,7 @@ export class GraphSimulationAdapter {
       if (![density, this.moisture[i], this.biomass[i], this.age[i], this.stress[i], this.deadMatter[i]].every(Number.isFinite)) nonfinite += 1;
       area += weight;
       living += density * weight;
+      if (density > 0.15) active += weight;
       biomass += this.biomass[i] * weight;
       deadMatter += this.deadMatter[i] * weight;
     }
@@ -340,13 +419,19 @@ export class GraphSimulationAdapter {
       cellCount: this.cellCount,
       componentCount: this.graph.componentCount,
       avgDensity: living / area,
+      activeRatio: active / area,
       avgBiomass: biomass / area,
       avgDormantReserves: dormant / area,
       avgDeadMatter: deadMatter / area,
       nonfinite,
       totalTicks: this.totalTicks,
+      lastBatchSize: this.lastBatchSize,
+      lastTickMs: this.lastTickMs,
       time: this.time,
       collapses: this.collapses,
+      germinations: this.germinations,
+      paintOps: this.paintOps,
+      lastPaintCount: this.lastPaintCount,
       revision: this.revision,
       environment: { ...this.environment },
     };

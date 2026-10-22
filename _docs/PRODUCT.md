@@ -1,9 +1,63 @@
 # PRODUCT
 
+## Staged graph lifecycle uploads - 2026-10-22
+Graph lifecycle revisions now copy into render-anchor buffers in reusable 8,000-anchor batches. Each batch marks only its density, biomass, vitality, stress, moisture and species ranges for GPU upload. A stable simulation snapshot prevents a batch from mixing revisions, and rapid simulation changes replace the queued revision with the newest state instead of building an unbounded backlog. Diagnostics expose synchronization progress, target revision, revision lag, maximum lifecycle chunk time and coalesced updates.
+
+High-detail preparation uses the same range-copy contract before the pending mesh becomes visible. The complete Low mesh remains active while the 60,000-anchor replacement receives both transforms and lifecycle state, so the final swap no longer performs a full anchor-state copy. On the repeated near-limit Chrome profile, the largest High preparation chunk fell from 20.3 ms to 10.8 ms and lifecycle chunks stayed at or below 2.1 ms. Macro Detailed-shoot p95 measured 33.4 ms in that short run, compared with 50 ms in the original baseline; frame results remain subject to browser scheduling variance.
+
+## Chunked High-detail preparation - 2026-10-22
+Graph High-detail expansion now prepares anchors and instance transforms in 4,000-anchor batches scheduled across animation frames. The active Low instanced mesh remains visible and usable until the complete 60,000-anchor replacement is ready, then the renderer swaps buffers atomically and disposes the prior GPU resources. Anchor generation is batch-size independent, so the Low prefix and final High layout match the synchronous contract exactly.
+
+Diagnostics expose preparation state, progress, total elapsed preparation time and the largest work chunk. Replacement imports can cancel pending preparation safely, repeated High requests share the same work, and High-resolution export waits for readiness instead of capturing partial detail. On the same 9,350-triangle fixture, the High control returned in 5.5 ms rather than blocking for 100.8 ms. Preparation completed over 425.3 ms while Low remained visible; the largest measured chunk was 20.3 ms.
+
+## Near-limit graph performance baseline - 2026-10-22
+A deterministic browser fixture now represents the intended general-model workload without adding a permanent binary asset. It generates a 9,350-triangle GLB containing one folded open surface with repeated apertures and 100 disconnected islands. The imported graph has 5,241 welded vertices, 101 components, 980 boundary edges, no non-manifold edges and no degenerate faces.
+
+On the recorded Chrome 156 / Intel UHD 620 run at 1920 x 1080, import and Low runtime construction took 417.5 ms. The deferred High expansion took 100.8 ms. High Cards and adaptive overview shoots held 16.7 ms median / 16.8 ms p95 over 45 frames. Macro Detailed shoots held the same median but reached a 50 ms p95. Thirty isolated simulation ticks measured 2.8 ms median / 5.2 ms p95; forty steps with all 160 spores active measured 1.4 ms / 2.1 ms; 5,000 forced BVH hits averaged 0.00662 ms each.
+
+These measurements identify import latency, the visible High-transition stall and Macro shoot spikes as the next performance work. Graph evolution, spore stepping and collision are within the fixed-step budget on this fixture and machine. The measurements are comparative evidence from one browser and GPU, not universal frame-time guarantees.
+
+## Progressive graph render detail - 2026-10-22
+Imported models now allocate 30,000 stable graph anchors at Low detail and expand once to the 60,000 High ceiling only when a visible geometric moss representation requests it. Surface mode can switch to High without allocating hidden instance data. Seeded area-weighted sampling is capacity independent, so every Low attachment remains byte-for-byte stable after expansion and graph lifecycle state continues to map to the same source faces.
+
+The shared adaptive-detail curve now applies to graph Detailed shoots. Macro distances retain the requested quality and density budget, while overview distances smoothly reduce the active instance count to a 45% floor. Flat triangles, diamonds, cards and clumps retain their manual counts. Camera motion changes draw ranges only; it does not regenerate anchors, transforms or lifecycle buffers.
+
+## Coordinated general-model runtime - 2026-10-22
+Self-contained GLB imports now activate the topology-general graph path in the product UI. Open, folded, porous and disconnected triangle meshes are centered, uniformly scaled and converted into one graph cell per source triangle. One runtime record owns the imported simulation, renderer, collision adapter and spore system, so playback, presets, painting, species changes, diagnostics and image export all target the same model.
+
+Built-in surfaces retain their radial runtime. Selecting a built-in pauses and hides the graph runtime; selecting Imported restores the graph state rather than reconstructing it. Reimport creates the replacement runtime before disposing the prior imported renderer and source geometry, so a failed import leaves the current scene usable. Imported files and their biological state remain session local.
+
+The graph renderer consumes the existing surface, moss, species, quality and representation controls. It draws bounded spore particles, uses face-index collision for brushes, reports graph/component statistics and updates GPU lifecycle buffers only when simulation or spore revisions change. This activation preserves the 10,000-triangle import ceiling and the established 30,000/60,000 visible-instance budgets.
+
+## Graph spore collision - 2026-10-20
+`GraphSporeSimulation` preserves the existing bounded, deterministic release-flight-landing-germination lifecycle on topology-general meshes. Mature graph faces release the dominant species from their centroid and normal. Four short flight segments per fixed step query a triangle BVH, retaining the nearest landing face, component and barycentric location before delayed germination updates that exact graph cell.
+
+`createMeshSegmentCollider` builds its hierarchy once and performs two-sided segment/triangle intersection in mesh-local coordinates. Close folded layers therefore resolve by flight distance rather than radial direction, and disconnected surfaces remain valid independent landing targets. The radial spore implementation remains unchanged for the current product path.
+
+## Graph renderer integration - 2026-10-20
+`createGraphRenderer` connects arbitrary mesh geometry, `GraphSimulationAdapter`, stable mesh anchors and mesh collision into one Three.js-compatible rendering boundary. The continuous Surface mode writes area-independent per-face lifecycle color into expanded vertex buffers. Triangle, diamond, crossed-card, clump and detailed-shoot modes use stable instanced transforms with density, biomass, vitality, stress, moisture and species attributes.
+
+Anchor transforms and typed-array allocations remain stable. Simulation revisions control attribute uploads, so unchanged frames do not rebuild geometry or resend lifecycle buffers. Low and High modes retain the established 30,000 and 60,000 instance ceilings, density reduces the active instance count, and species render profiles control width and height. The coordinated general-model runtime now activates this adapter for imported GLBs while built-ins retain the radial renderer.
+
+## Mesh raycast collision - 2026-10-04
+`createMeshCollisionAdapter` binds a Three.js-compatible mesh to its surface graph after validating that geometry face order and graph triangle order match vertex-for-vertex. It converts a world-space raycast hit into a graph location with face index, component, normalized barycentric coordinates, reconstructed local point, world point, surface normal and hit distance. That resolved face can drive `GraphSimulationAdapter.paintFromFace` without spherical coordinate conversion.
+
+General GLB extraction now runs face-identity validation before returning imported geometry. Divergent face counts, reordered vertices, invalid hit faces, off-face points and degenerate collision faces fail explicitly. The active radial UI remains on its existing collision path until the graph renderer is connected.
+
+## Face-index graph painting - 2026-10-04
+`GraphSimulationAdapter.paintFromFace` accepts the triangle index produced by a mesh raycast and applies paint or erase influence along centroid-weighted graph distance. Painting deposits only the selected species and raises local moisture and vitality. Erasing reduces living species, dormant reserves, biomass and dead matter together. The brush cannot jump across disconnected components or between close folded layers that do not share an edge.
+
+The traversal is shared with the scalar graph prototype so topology behavior has one implementation. Successful mutations advance the simulation revision and expose paint-operation counts for diagnostics; invalid face indices, radii, strengths and species are rejected before state changes. Pointer raycasting remains the next integration boundary.
+
+## Stable mesh render anchors - 2026-10-04
+`createMeshRenderAnchors` builds deterministic, area-weighted attachment points for topology-general meshes. Every anchor retains its source triangle, barycentric coordinates and connected-component identity alongside position, normal, a stable tangent frame and seeded variation. Zero-area triangles are excluded. This preserves attachment across lifecycle updates without projecting through spherical UVs or moving close folded layers onto one another.
+
+`MeshRenderAnchorState` maps the graph simulation's semantic channels into preallocated per-anchor buffers. It exposes species weights, dominant species, density, vitality, moisture, biomass, age, stress, dormant reserves and dead matter, and skips work when the simulation revision has not changed. The contract is renderer agnostic and is not yet connected to the active Three.js field renderer; see [the delivery record](data/MESH_RENDER_ANCHORS_2026-10-04.md).
+
 ## Graph-backed simulation adapter - 2026-10-02
 `GraphSimulationAdapter` turns each triangle in a mesh surface graph into one biological simulation cell. It carries three living species channels plus vitality, local moisture, biomass, age, stress, three species-specific dormant reserves and dead matter. Its semantic `getState()` contract gives later render-anchor and interaction work direct access to these channels without depending on the radial UV texture layout.
 
-The adapter uses shared-edge graph neighbors for diffusion and colonization, graph normals and height for habitat, and triangle area for statistics. Disconnected components therefore remain biologically isolated even when their surfaces are close in world space. It shares fixed-step timing, environment validation and species profiles with the active radial field through a neutral environment module. Deterministic reset, drought collapse, dormant recovery and species conversion are implemented, but the adapter is not yet connected to the renderer, pointer tools, spores or product UI.
+The adapter uses shared-edge graph neighbors for diffusion and colonization, graph normals and height for habitat, and triangle area for statistics. Disconnected components therefore remain biologically isolated even when their surfaces are close in world space. It shares fixed-step timing, environment validation and species profiles with the active radial field through a neutral environment module. Deterministic reset, drought collapse, dormant recovery and species conversion are implemented; graph rendering, face painting, spores and the product import UI now consume the contract.
 
 ## Mesh surface-graph prototype - 2026-10-02
 KOKE now has a topology-general mesh contract alongside the active radial field. It welds indexed or expanded triangle vertices, derives shared-edge adjacency, labels disconnected components, reports boundary, non-manifold and degenerate topology, and provides deterministic area-weighted barycentric samples. Surface locations retain triangle, barycentric and component identity rather than relying on spherical UV coordinates.

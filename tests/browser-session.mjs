@@ -30,6 +30,8 @@ try {
   const lodExpression = "import('/tests/browser-lod-check.js').then((module) => module.runLodChecks())";
   const morphologyExpression = (speciesId) => `import('/tests/browser-morphology-check.js').then((module) => module.prepareMorphology(${speciesId}))`;
   const visualExpression = (view) => `import('/tests/browser-perf.js?review=1').then((module) => module.prepareVisualReview('${view}'))`;
+  const graphRuntimeExpression = "import('/tests/browser-graph-runtime-check.js').then((module) => module.runGraphRuntimeChecks())";
+  const graphPerformanceExpression = "import('/tests/browser-graph-performance.js').then((module) => module.measureGraphPerformance())";
   const expression = mode === 'perf' ? perfExpression
     : mode === 'lod' ? lodExpression
     : mode === 'morph-cushion' ? morphologyExpression(0)
@@ -37,15 +39,17 @@ try {
     : mode === 'morph-feather' ? morphologyExpression(2)
     : mode === 'visual-overview' ? visualExpression('iso')
     : mode === 'visual-macro' ? visualExpression('macro')
+    : mode === 'graph-runtime' ? graphRuntimeExpression
+    : mode === 'graph-performance' ? graphPerformanceExpression
     : process.env.KOKE_EXPRESSION || '({ready:!!window.koke,stats:window.koke?.diagnostics.buildSnapshot(),programs:window.koke?.renderer.info.programs.map(p=>({name:p.name,diagnostics:p.diagnostics}))})';
   const result = await call('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
   const payload = { result, errors };
-  if ((mode === 'perf'||mode === 'lod') && process.argv[3]) {
+  if ((mode === 'perf'||mode === 'lod'||mode === 'graph-performance') && process.argv[3]) {
     await writeFile(process.argv[3], JSON.stringify(payload, null, 2));
     console.log(JSON.stringify({ written: process.argv[3], records: result.result?.value?.records?.length ?? 0, errors: errors.length }));
   } else console.log(JSON.stringify(payload, null, 2));
   if (result.exceptionDetails || errors.length) process.exitCode = 1;
-  if (mode !== 'perf' && mode !== 'lod' && process.argv[3]) {
+  if (mode !== 'perf' && mode !== 'lod' && mode !== 'graph-performance' && process.argv[3]) {
     await call('Runtime.evaluate', { expression: 'window.koke?.effects.render()' });
     let clip;
     if(process.argv[4]==='canvas') {

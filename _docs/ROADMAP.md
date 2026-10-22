@@ -1,7 +1,7 @@
 # ROADMAP
 
 ## Current priority - studio workflow
-See [STUDIO_PROPOSAL.md](STUDIO_PROPOSAL.md). Stages 1 through 5 are delivered for visual review: studio shell, expanded built-in and imported radial surfaces, moss representations, mapped color controls, biological moss profiles, and configurable still-image export. Next work should focus on organic tuning and measured performance, followed by a topology-general surface graph if folded or porous model support is required. Earlier rendering delivery and plans below remain historical context.
+See [STUDIO_PROPOSAL.md](STUDIO_PROPOSAL.md). Stages 1 through 5 and topology-general GLB activation are delivered for visual review: studio shell, built-in and imported surfaces, moss representations, mapped color controls, biological moss profiles, configurable still-image export and graph-backed growth on open, folded, porous or disconnected meshes. The next graph-rendering delivery should add model-scale-aware moss defaults, then use representative user models to tune import and Low allocation cost. Earlier rendering delivery and plans below remain historical context.
 
 The shell hierarchy was refined after review: Object now switches between Surface and Moss child panels, Scene owns external factors, and Render owns camera/quality/effects. Control columns follow Bonsai's right-aligned form rhythm.
 
@@ -9,7 +9,7 @@ Panel forms are top anchored and retain consistent gaps regardless of content le
 
 Initialization now defaults to a paused low-detail Sphere and Surface mat. Each launch has a random session seed, with URL seed replay available. Image export provides exact dimensions, common presets, PNG/JPEG/WebP, alpha where supported, quality, detail and effect controls while restoring live state after capture.
 
-Surface delivery now includes six built-ins, seeded rock deformity, procedural material controls and validated GLB import for closed star-shaped meshes up to 10,000 triangles. Brush and Eraser moved to a centered rail tool group with a dedicated temporary settings panel. General folded/disconnected topology remains deferred because it requires triangle adjacency, non-radial painting and attachment data rather than the current spherical field.
+Surface delivery now includes six built-ins, seeded rock deformity, procedural material controls and graph-backed GLB import for open, folded, porous and disconnected meshes up to 10,000 triangles. Brush and Eraser use face-index collision on imported models and remain in the centered rail tool group with a dedicated temporary settings panel.
 
 Pointer mapping is now fixed across every tool: left interaction, middle pan/track, right orbit and wheel zoom. The first organic/performance pass adds session-seeded anchor jitter and progressive 30,000-to-60,000 shoot allocation. Further work should measure GPU overdraw on target hardware and tune colony-scale variation from visual review.
 
@@ -23,7 +23,27 @@ Species-specific geometry is also delivered without increasing draw calls or geo
 
 The first topology-general delivery is complete as an isolated mesh surface graph. It proves welded triangle adjacency, component isolation, area-weighted samples, graph painting and graph propagation on a folded/disconnected fixture while leaving the radial product path intact.
 
-The graph-backed simulation adapter is now delivered. Each triangle carries species, vitality, moisture, biomass, age, stress, dormant reserves and dead matter using the same fixed-step environment and species contracts as the active field. Lifecycle propagation stays within connected graph components. The next delivery is stable triangle/barycentric render anchors, followed by face-index painting and mesh collision. Only after those pieces agree should the UI accept folded or porous imports as active scenes.
+The graph-backed simulation adapter is now delivered. Each triangle carries species, vitality, moisture, biomass, age, stress, dormant reserves and dead matter using the same fixed-step environment and species contracts as the active field. Lifecycle propagation stays within connected graph components.
+
+Stable triangle/barycentric render anchors are also delivered as an isolated contract. They are deterministic, area weighted, component aware, provide an orthonormal surface frame and map every lifecycle channel into reusable per-anchor buffers.
+
+Face-index graph painting is delivered at the simulation boundary. Paint and erase brushes follow graph distance, update the appropriate biological channels and cannot cross disconnected surfaces.
+
+Mesh raycast collision is also delivered. Import validates face-order identity, and world-space hits resolve to triangle, barycentric, component, point and normal data before driving graph painting.
+
+Graph-renderer integration is delivered as an isolated Three.js adapter. It supports the continuous surface and five geometric representations, stable 30,000/60,000 instance budgets, species morphology, lifecycle-driven color and growth, revision-gated buffer uploads and the shared collision mesh.
+
+Graph spore collision is delivered with a bounded particle pool, accelerated segment/triangle queries, exact landing identity and species-preserving delayed germination.
+
+The coordinated general-model runtime is now active in the UI. Import, simulation, rendering, painting, collision, spores, diagnostics and export switch together, while built-in and imported state survive surface changes. A Chrome end-to-end check covers open and disconnected faces, painting, representation control, runtime restoration and shader compilation.
+
+Progressive graph detail is delivered. Low imports allocate 30,000 capacity-stable anchors; High expansion is deferred until geometric moss is visible, preserves every existing attachment and occurs only once. Graph Detailed shoots now use the shared distance curve, measuring 30,000 instances at Macro and 14,665 at Isometric in the focused Chrome check, while Cards remain at their 30,000 manual budget.
+
+The near-limit performance baseline is now recorded with a deterministic 9,350-triangle folded, apertured and disconnected GLB. Import took 417.5 ms and the original synchronous High expansion took 100.8 ms on the recorded machine. Cards and overview shoots were stable; Macro Detailed shoots reached a 50 ms p95. Simulation, full-pool spores and BVH collision remained below their fixed-step budgets.
+
+Chunked High preparation is delivered. The High interaction returns immediately while the renderer prepares the deterministic 60,000-anchor replacement over subsequent frames with Low geometry still visible.
+
+Staged lifecycle synchronization is also delivered. High preparation now fills lifecycle state before swapping, and recurring revisions use reusable 8,000-anchor batches with partial GPU update ranges. The repeat near-limit run measured a 6.6 ms High interaction, 370.6 ms elapsed readiness, a 10.8 ms largest High chunk and a 2.1 ms largest lifecycle chunk. Rapid playback revisions are coalesced; the sampled renderer trailed by four to five revisions during sustained evolution. Model-scale-aware moss defaults are next, followed by representative-model tuning of import and Low allocation cost.
 
 ## Delivery update - 2026-09-11
 - Implemented field correctness repairs: finite validated inputs, unified mapping, updated habitats, species preservation, area-weighted statistics, and fixed-time evolution.

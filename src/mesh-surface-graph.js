@@ -109,6 +109,25 @@ class MinHeap {
   pop(){if(!this.items.length)return null;const first=this.items[0],last=this.items.pop();if(this.items.length){let i=0;while(true){let child=i*2+1;if(child>=this.items.length)break;if(child+1<this.items.length&&this.items[child+1].distance<this.items[child].distance)child++;if(this.items[child].distance>=last.distance)break;this.items[i]=this.items[child];i=child;}this.items[i]=last;}return first;}
 }
 
+export function visitTrianglesWithinRadius(graph,start,radius,visitor) {
+  if(!graph?.neighbors||!graph?.centroids||!Number.isInteger(graph.triangleCount))throw new TypeError('A mesh surface graph is required');
+  if(!Number.isInteger(start)||start<0||start>=graph.triangleCount)throw new RangeError('Unknown surface triangle');
+  if(!Number.isFinite(radius)||radius<=0)throw new RangeError('Graph radius must be positive');
+  if(typeof visitor!=='function')throw new TypeError('A graph visitor is required');
+  const distances=new Float64Array(graph.triangleCount);distances.fill(Infinity);distances[start]=0;
+  const heap=new MinHeap();heap.push({triangle:start,distance:0});let visited=0;
+  while(heap.items.length){
+    const current=heap.pop();if(current.distance!==distances[current.triangle]||current.distance>radius)continue;
+    visitor(current.triangle,current.distance,Math.max(0,1-current.distance/radius));visited++;
+    const a=current.triangle*3;
+    for(const neighbor of graph.neighbors[current.triangle]){
+      const b=neighbor*3,step=Math.hypot(graph.centroids[a]-graph.centroids[b],graph.centroids[a+1]-graph.centroids[b+1],graph.centroids[a+2]-graph.centroids[b+2]);
+      const distance=current.distance+step;if(distance<distances[neighbor]&&distance<=radius){distances[neighbor]=distance;heap.push({triangle:neighbor,distance});}
+    }
+  }
+  return visited;
+}
+
 export class MeshSurfaceField {
   constructor(graph,{initialValue=0}={}) {
     if(!graph?.neighbors||!Number.isInteger(graph.triangleCount))throw new TypeError('A mesh surface graph is required');
@@ -118,19 +137,12 @@ export class MeshSurfaceField {
   paintFromTriangle(start,{radius=0.5,strength=1,erase=false}={}) {
     if(!Number.isInteger(start)||start<0||start>=this.graph.triangleCount)throw new RangeError('Unknown paint triangle');
     if(!Number.isFinite(radius)||radius<=0||!Number.isFinite(strength)||strength<0||strength>1)throw new RangeError('Invalid graph brush settings');
-    const distances=new Float64Array(this.graph.triangleCount);distances.fill(Infinity);distances[start]=0;
-    const heap=new MinHeap();heap.push({triangle:start,distance:0});let changed=0;
-    while(heap.items.length){
-      const current=heap.pop();if(current.distance!==distances[current.triangle]||current.distance>radius)continue;
-      const influence=strength*(1-current.distance/radius),before=this.values[current.triangle];
-      this.values[current.triangle]=erase?before*(1-influence):Math.min(1,before+influence*(1-before));
-      if(Math.abs(this.values[current.triangle]-before)>1e-8)changed++;
-      const a=current.triangle*3;
-      for(const neighbor of this.graph.neighbors[current.triangle]){
-        const b=neighbor*3,step=Math.hypot(this.graph.centroids[a]-this.graph.centroids[b],this.graph.centroids[a+1]-this.graph.centroids[b+1],this.graph.centroids[a+2]-this.graph.centroids[b+2]);
-        const distance=current.distance+step;if(distance<distances[neighbor]&&distance<=radius){distances[neighbor]=distance;heap.push({triangle:neighbor,distance});}
-      }
-    }
+    let changed=0;
+    visitTrianglesWithinRadius(this.graph,start,radius,(triangle,distance,falloff)=>{
+      const influence=strength*falloff,before=this.values[triangle];
+      this.values[triangle]=erase?before*(1-influence):Math.min(1,before+influence*(1-before));
+      if(Math.abs(this.values[triangle]-before)>1e-8)changed++;
+    });
     return changed;
   }
   step({diffusion=0.3,growth=0.1,decay=0,dt=0.05}={}) {

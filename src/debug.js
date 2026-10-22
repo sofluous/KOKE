@@ -6,7 +6,8 @@ function formatNow() {
   return new Date().toLocaleTimeString([], { hour12: false });
 }
 
-export function createDiagnostics({ simulation, mossRenderer, uiState, spores, renderer }) {
+export function createDiagnostics({ simulation, mossRenderer, uiState, spores, renderer, getRuntime }) {
+  const current=()=>getRuntime?.()||{simulation,mossRenderer,spores};
   const metricEls = {
     fps: document.getElementById("metricFps"),
     frameMs: document.getElementById("metricFrameMs"),
@@ -50,14 +51,15 @@ export function createDiagnostics({ simulation, mossRenderer, uiState, spores, r
   }
 
   function buildSnapshot() {
-    const simStats = simulation.getStats();
-    const renderStats = mossRenderer.getStats();
+    const active=current(),simStats = active.simulation.getStats();
+    const renderStats = active.mossRenderer.getStats();
     return {
       capturedAt: new Date().toISOString(),
       ui: { ...uiState },
       simulation: simStats,
       rendering: renderStats,
-      spores: spores?.getStats(),
+      runtime: active.type || 'radial',
+      spores: active.spores?.getStats(),
       gpu: renderer ? { ...renderer.info.render } : null,
       performance: {
         fps: Number((1000 / Math.max(0.001, smoothedFrameMs)).toFixed(1)),
@@ -84,8 +86,8 @@ export function createDiagnostics({ simulation, mossRenderer, uiState, spores, r
     if (presentationWindowMs < 250) return;
     presentationWindowMs = 0;
 
-    const simStats = simulation.getStats();
-    const renderStats = mossRenderer.getStats();
+    const active=current(),simStats = active.simulation.getStats();
+    const renderStats = active.mossRenderer.getStats();
 
     metricEls.fps.textContent = (1000 / Math.max(0.001, smoothedFrameMs)).toFixed(1);
     metricEls.frameMs.textContent = smoothedFrameMs.toFixed(2);
@@ -97,7 +99,7 @@ export function createDiagnostics({ simulation, mossRenderer, uiState, spores, r
     metricEls.batch.textContent = `${simStats.lastBatchSize} cells`;
     metricEls.paintOps.textContent = String(simStats.paintOps);
     metricEls.lastPaint.textContent = `${simStats.lastPaintCount} cells`;
-    document.getElementById('metricSpores').textContent = String(spores.particles.filter(p => p.state === 1).length);
+    document.getElementById('metricSpores').textContent = String(active.spores.particles.filter(p => p.state === 1).length);
     document.getElementById('metricGerminations').textContent = String(simStats.germinations);
     document.getElementById('metricTriangles').textContent = renderer.info.render.triangles.toLocaleString();
   }

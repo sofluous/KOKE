@@ -6,6 +6,12 @@ This folder tracks product intent, delivery stages, and quality checks for the m
 - [Studio proposal and staged delivery](STUDIO_PROPOSAL.md): UI organization, models, moss styles, and exports; Stage 1 authorized.
 - [Moss redesign delivery notes](data/MOSS_IMPLEMENTATION_2026-09-11.md): behavior, usage, checks, images, and limitations.
 - [Graph simulation adapter](data/GRAPH_SIMULATION_ADAPTER_2026-10-02.md): topology-general lifecycle state contract and staged integration boundary.
+- [Mesh render anchors](data/MESH_RENDER_ANCHORS_2026-10-04.md): stable triangle/barycentric attachments and lifecycle buffer mapping.
+- [Mesh collision adapter](data/MESH_COLLISION_2026-10-04.md): face-identity validation and ray-hit conversion for graph interaction.
+- [Graph renderer](data/GRAPH_RENDERER_2026-10-20.md): lifecycle-driven surface and instanced rendering for topology-general meshes.
+- [Graph spores](data/GRAPH_SPORES_2026-10-20.md): accelerated mesh collision and species-preserving particle lifecycle.
+- [General-model runtime](data/GENERAL_MODEL_RUNTIME_2026-10-22.md): coordinated UI activation, Chrome coverage and remaining performance work.
+- [Near-limit graph performance](data/GRAPH_PERFORMANCE_REVIEW_2026-10-22.md): deterministic 9,350-triangle workload, synchronous/chunked/staged lifecycle measurements and optimization priorities.
 - Current regression commands: `npm test` and `npm run check`.
 - The audit/probes below are the historical baseline before the redesign.
 

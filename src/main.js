@@ -8,7 +8,10 @@ import { createFieldRenderer } from "./field-renderer.js";
 import { createUI } from "./ui.js";
 import { createDiagnostics } from "./debug.js";
 import { normalizeExportSettings } from './export-image.js';
-import { importRadialGlb } from './model-import.js';
+import { importMeshGraphGlb } from './model-import.js';
+import { GraphSimulationAdapter } from './graph-simulation-adapter.js';
+import { createGraphRenderer } from './graph-renderer.js';
+import { GraphSporeSimulation } from './graph-spores.js';
 
 const canvas = document.getElementById("viewport");
 const viewportWrap = document.getElementById("viewportWrap");
@@ -43,7 +46,7 @@ const lightDir = directionFromAngles(initialLightAzimuth, initialLightElevation)
 lights.sun.position.copy(lightDir.clone().multiplyScalar(8));
 
 const surface = { sampleSurface: startupDefinition.sample };
-const simulation = new FieldSimulation(surface, {
+let simulation = new FieldSimulation(surface, {
   environment: defaultFieldEnvironment,
   speciesCatalog: mossSpeciesCatalog,
   lightDirection: { x: lightDir.x, y: lightDir.y, z: lightDir.z },
@@ -53,7 +56,7 @@ const simulation = new FieldSimulation(surface, {
 });
 
 const speciesCatalog = simulation.getSpeciesCatalog();
-const mossRenderer = createFieldRenderer(THREE, scene, meshGeometry, {
+let mossRenderer = createFieldRenderer(THREE, scene, meshGeometry, {
   speciesPalette: speciesCatalog.map((species) => species.color),
   speciesProfiles: speciesCatalog.map((species) => species.renderProfile),
   coverageMapSize: simulation.mapSize,
@@ -67,10 +70,34 @@ mossRenderer.setQuality(startupRenderDetail);
 mossRenderer.setRepresentation(startupRepresentation);
 mossRenderer.setDensity(0.5);
 mossRenderer.setSurfaceAppearance({baseColor:'#252c2e',accentColor:'#586063',texture:'cracked',textureScale:14,textureStrength:0.7,roughness:0.88});
-const spores = new SporeSimulation(simulation);
+let spores = new SporeSimulation(simulation);
 simulation.onStep = (dt) => spores.step(dt);
 mossRenderer.setCoverage(simulation.fillCoverageMap());
 simulation.setRunning(false);
+const radialRuntime={type:'radial',simulation,mossRenderer,spores};
+let graphRuntime=null;
+let activeRuntime=radialRuntime;
+
+function refreshActiveRenderer() {
+  if(typeof simulation.fillCoverageMap==='function'&&simulation.dirty)mossRenderer.setCoverage(simulation.fillCoverageMap());
+  return activeRuntime.type==='graph'?mossRenderer.update(spores):mossRenderer.update(simulation.time,spores);
+}
+
+function selectRuntime(runtime) {
+  activeRuntime.simulation.setRunning(false);
+  activeRuntime.mossRenderer.group.visible=false;
+  activeRuntime=runtime;simulation=runtime.simulation;mossRenderer=runtime.mossRenderer;spores=runtime.spores;
+  mossRenderer.group.visible=true;simulation.setRunning(false);ui?.setPlaying(false);
+  if(typeof ui!=='undefined'){
+    simulation.setEnvironment({moisture:ui.state.moisture,slopeBias:ui.state.slopeBias,growthRate:ui.state.growthRate,decayRate:ui.state.decayRate,diffusionRate:ui.state.diffusionRate,colonization:ui.state.colonization,gravityCreep:ui.state.gravityCreep,cycleSpeed:ui.state.cycleSpeed});
+    const direction=directionFromAngles(ui.state.lightAzimuth,ui.state.lightElevation);simulation.setLightDirection({x:direction.x,y:direction.y,z:direction.z});
+    mossRenderer.setQuality(ui.state.detail);mossRenderer.setRepresentation(ui.state.representation);mossRenderer.setDensity(ui.state.mossDensity);
+    mossRenderer.setAdaptiveDetail(ui.state.adaptiveDetail);mossRenderer.setDew(ui.state.dew);mossRenderer.setWireframe(ui.state.wireframe);
+    mossRenderer.setAppearance({scale:ui.state.mossScale,aspect:ui.state.mossAspect,orientation:ui.state.mossOrientation,colonyVariation:ui.state.mossColonyVariation,patchiness:ui.state.mossPatchiness,rootColor:ui.state.mossRootColor,tipColor:ui.state.mossTipColor,stressColor:ui.state.mossStressColor,colorSource:ui.state.mossColorSource,colorRange:ui.state.mossColorRange,invert:ui.state.mossColorInvert,textureScale:ui.state.mossTextureScale,textureStrength:ui.state.mossTextureStrength});
+    mossRenderer.setSurfaceAppearance({baseColor:ui.state.surfaceBaseColor,accentColor:ui.state.surfaceAccentColor,texture:ui.state.surfaceTexture,textureScale:ui.state.surfaceTextureScale,textureStrength:ui.state.surfaceTextureStrength,roughness:ui.state.surfaceRoughness});
+  }
+  refreshActiveRenderer();
+}
 
 let diagnostics;
 const ui = createUI(
@@ -155,7 +182,7 @@ const ui = createUI(
       simulation.reset(mode,ui.state.mossTypeId);
       spores.reset();
       ui.setTime(0);
-      mossRenderer.setCoverage(simulation.fillCoverageMap());
+      refreshActiveRenderer();
       diagnostics?.pushLog(`Scene reset: ${mode}.`);
     },
     onStep() {
@@ -179,10 +206,19 @@ const ui = createUI(
       diagnostics?.pushLog(`Surface material changed: ${key}=${value}.`);
     },
     async onImportSurface(file) {
-      const result=await importRadialGlb(THREE,file);importedSurface?.geometry.dispose();importedSurface=result;
-      simulation.setRunning(false);ui.setPlaying(false);spores.reset();
-      simulation.setSurface(result.sample);mossRenderer.setSurface(result.sample,result.geometry.clone());mossRenderer.setCoverage(simulation.fillCoverageMap());
-      ui.state.surface='imported';diagnostics?.pushLog(`Imported radial GLB: ${result.name} (${result.triangleCount} triangles, ${result.topology.componentCount} graph component${result.topology.componentCount===1?'':'s'}).`);
+      const result=await importMeshGraphGlb(THREE,file);
+      const currentLight=directionFromAngles(ui.state.lightAzimuth,ui.state.lightElevation);
+      const graphSimulation=new GraphSimulationAdapter(result.graph,{environment:{moisture:ui.state.moisture,slopeBias:ui.state.slopeBias,growthRate:ui.state.growthRate,decayRate:ui.state.decayRate,diffusionRate:ui.state.diffusionRate,colonization:ui.state.colonization,gravityCreep:ui.state.gravityCreep,cycleSpeed:ui.state.cycleSpeed},speciesCatalog:mossSpeciesCatalog,lightDirection:{x:currentLight.x,y:currentLight.y,z:currentLight.z},seed:startupSeed,initialState:ui.state.initialState,initialSpeciesId:ui.state.mossTypeId});
+      let graphRenderer;
+      try {
+        graphRenderer=createGraphRenderer(THREE,scene,result.geometry,result.graph,graphSimulation,{seed:startupSeed,initialQuality:ui.state.detail,initialRepresentation:ui.state.representation,initialDensity:ui.state.mossDensity,speciesPalette:speciesCatalog.map(species=>species.color),speciesProfiles:speciesCatalog.map(species=>species.renderProfile),surfaceBaseColor:ui.state.surfaceBaseColor,rootColor:ui.state.mossRootColor,tipColor:ui.state.mossTipColor,stressColor:ui.state.mossStressColor});
+        const graphSpores=new GraphSporeSimulation(graphSimulation);graphSimulation.onStep=dt=>graphSpores.step(dt);
+        graphRenderer.setAppearance({scale:ui.state.mossScale,aspect:ui.state.mossAspect});graphRenderer.setAdaptiveDetail(ui.state.adaptiveDetail);graphRenderer.setWireframe(ui.state.wireframe);
+        graphRuntime?.mossRenderer.dispose();importedSurface?.geometry.dispose();importedSurface=result;
+        graphRuntime={type:'graph',simulation:graphSimulation,mossRenderer:graphRenderer,spores:graphSpores,source:result};
+      } catch(error) { graphRenderer?.dispose();result.geometry.dispose();throw error; }
+      selectRuntime(graphRuntime);ui.state.surface='imported';
+      diagnostics?.pushLog(`Imported graph GLB: ${result.name} (${result.triangleCount} triangles, ${result.topology.componentCount} component${result.topology.componentCount===1?'':'s'}).`);
       return result;
     },
     onAppearance(key,value) {
@@ -204,7 +240,7 @@ const ui = createUI(
         simulation.reset('seed',speciesId);ui.setInitialState('seed');ui.setTime(0);
         diagnostics?.pushLog(`Scene reseeded with ${speciesCatalog[speciesId].name}.`);
       }
-      mossRenderer.setCoverage(simulation.fillCoverageMap());
+      refreshActiveRenderer();
     },
     onPaintToggle(enabled) {
       canvas.classList.toggle("is-paint-mode", enabled);
@@ -256,23 +292,21 @@ diagnostics = createDiagnostics({
   uiState: ui.state,
   spores,
   renderer,
+  getRuntime:()=>activeRuntime,
 });
 diagnostics.pushLog(`Simulation ready with seed ${startupSeed}. Press Play to begin.`);
 
 let importedSurface=null;
 function applySurface(key,detail) {
-  if(key==='imported'&&importedSurface){
-    simulation.setRunning(false);ui.setPlaying(false);simulation.setSurface(importedSurface.sample);spores.reset();
-    mossRenderer.setSurface(importedSurface.sample,importedSurface.geometry.clone());mossRenderer.setCoverage(simulation.fillCoverageMap());
-    diagnostics?.pushLog(`Surface changed: ${importedSurface.name}. Growth field preserved; spores cleared.`);return;
+  if(key==='imported'&&graphRuntime){
+    selectRuntime(graphRuntime);diagnostics?.pushLog(`Surface changed: ${importedSurface.name}. Graph field restored.`);return;
   }
   const definition=surfaceCatalog[key]||surfaceCatalog.rock;
   const sample=createSurfaceSampler(key,{seed:startupSeed,deformity:ui.state.surfaceDeformity});
-  simulation.setRunning(false);ui.setPlaying(false);
-  simulation.setSurface(sample);
-  spores.reset();
-  mossRenderer.setSurface(sample,createSurfaceGeometry(sample,detail,Boolean(definition.faceted)||key==='icosahedron'));
-  mossRenderer.setCoverage(simulation.fillCoverageMap());
+  selectRuntime(radialRuntime);
+  radialRuntime.simulation.setSurface(sample);radialRuntime.spores.reset();
+  radialRuntime.mossRenderer.setSurface(sample,createSurfaceGeometry(sample,detail,Boolean(definition.faceted)||key==='icosahedron'));
+  refreshActiveRenderer();
   diagnostics?.pushLog(`Surface changed: ${definition.name} (${detail}). Growth field preserved; spores cleared.`);
 }
 
@@ -299,12 +333,15 @@ function paintFromEvent(event) {
   const hits = raycaster.intersectObject(mossRenderer.mesh, false);
   if (!hits.length) return;
 
-  const painted = simulation.paintAt(mossRenderer.mesh.worldToLocal(hits[0].point.clone()), {
+  const brush = {
     radius: ui.state.paintRadius,
     strength: ui.state.paintStrength,
     speciesId: ui.state.paintSpeciesId,
     erase: ui.state.paintErase,
-  });
+  };
+  const painted = activeRuntime.type==='graph'
+    ? mossRenderer.collision.paintHit(simulation,hits[0],brush).changed
+    : simulation.paintAt(mossRenderer.mesh.worldToLocal(hits[0].point.clone()),brush);
 
   if (painted > 0) {
     const now = performance.now();
@@ -453,12 +490,12 @@ async function exportImage(input) {
   simulation.setRunning(false);ui.setPlaying(false);
   try {
     if(settings.detail!=='current')mossRenderer.setQuality(settings.detail);
+    await mossRenderer.whenHighReady?.();
     if(!settings.effects){effects.setEnabled(false);mossRenderer.setDew(false);}
     if(settings.transparent){scene.background=null;scene.fog=null;floor.visible=false;renderer.setClearAlpha(0);}
     renderer.setPixelRatio(1);renderer.setSize(settings.width,settings.height,false);
     camera.aspect=settings.width/settings.height;camera.updateProjectionMatrix();effects.resize(settings.width,settings.height);
-    if(simulation.dirty)mossRenderer.setCoverage(simulation.fillCoverageMap());
-    mossRenderer.update(simulation.time,spores);effects.render();
+    refreshActiveRenderer();effects.render();
     const blob=await canvasToBlob(settings.mimeType,settings.quality);
     showBlobPreview(blob,settings);
     downloadBlob(`koke-${startupSeed}-${Date.now()}.${settings.extension}`,blob);
@@ -475,8 +512,7 @@ async function exportImage(input) {
 }
 
 function captureSnapshot(download) {
-  if (simulation.dirty) mossRenderer.setCoverage(simulation.fillCoverageMap());
-  mossRenderer.update(simulation.time, spores);
+  refreshActiveRenderer();
   effects.render();
   const png = renderer.domElement.toDataURL("image/png");
   if (snapshotThumb) snapshotThumb.src = png;
@@ -524,10 +560,7 @@ function animate() {
   const simStepped = simulation.updateFrame(frameMs / 1000 * ui.state.playbackSpeed);
   if (simStepped) ui.setTime(simulation.time);
 
-  if (simulation.dirty) {
-    mossRenderer.setCoverage(simulation.fillCoverageMap());
-  }
-  mossRenderer.update(simulation.time, spores);
+  refreshActiveRenderer();
 
   controls.update();
   mossRenderer.setViewDistance(camera.position.distanceTo(controls.target));
@@ -538,4 +571,6 @@ function animate() {
 
 animate();
 
-window.koke = { scene, camera, simulation, ui, diagnostics, mossRenderer, spores, renderer, controls, effects, setViewPreset, captureSnapshot };
+window.koke = { scene, camera, get simulation(){return simulation;}, ui, diagnostics,
+  get mossRenderer(){return mossRenderer;}, get spores(){return spores;}, get activeRuntime(){return activeRuntime;},
+  renderer, controls, effects, setViewPreset, captureSnapshot };

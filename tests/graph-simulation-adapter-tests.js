@@ -15,6 +15,11 @@ const indices = new Uint32Array([
 const graph = createMeshSurfaceGraph(positions, { indices });
 
 const adapter = new GraphSimulationAdapter(graph, { seed: 42, initialState: 'bare' });
+let steppedDuration = 0;
+adapter.onStep = (dt) => { steppedDuration += dt; };
+adapter.stepBatch();
+assert.ok(steppedDuration > 0, 'fixed simulation steps advance attached runtime systems');
+adapter.onStep = null;
 const state = adapter.getState();
 assert.deepEqual(state.channels, [
   'species', 'vitality', 'moisture', 'biomass', 'age', 'stress', 'dormantReserves', 'deadMatter',
@@ -26,7 +31,18 @@ for (const channel of ['vitality', 'moisture', 'biomass', 'age', 'stress', 'dead
   assert.equal(state[channel].length, graph.triangleCount, channel);
 }
 
-// Seed one component directly at the adapter boundary. Face-index painting is a later delivery.
+const paintRevision = adapter.revision;
+assert.equal(adapter.paintFromFace(0, { radius: 10, strength: 0.8, speciesId: 2 }), 4);
+assert.equal(adapter.revision, paintRevision + 1);
+for (let triangle = 0; triangle < 4; triangle += 1) assert.ok(adapter.species[triangle * 3 + 2] > 0);
+for (let triangle = 4; triangle < 6; triangle += 1) assert.equal(adapter.species[triangle * 3 + 2], 0);
+const beforeErase = adapter.species[2];
+assert.ok(adapter.paintFromFace(0, { radius: 0.2, strength: 0.5, speciesId: 2, erase: true }) > 0);
+assert.ok(adapter.species[2] < beforeErase);
+assert.equal(adapter.getStats().paintOps, 2);
+adapter.reset('bare');
+
+// Seed one component directly to isolate lifecycle propagation from brush falloff.
 adapter.species[0] = 0.8;
 adapter.biomass[0] = 0.6;
 for (let step = 0; step < 240; step += 1) adapter.step();
@@ -77,7 +93,8 @@ const first = new GraphSimulationAdapter(graph, { seed: 99, initialState: 'matur
 const second = new GraphSimulationAdapter(graph, { seed: 99, initialState: 'mature' });
 for (let step = 0; step < 20; step += 1) { first.step(); second.step(); }
 assert.deepEqual(first.species, second.species);
-assert.deepEqual(first.getStats(), second.getStats());
+const firstStats=first.getStats(),secondStats=second.getStats();delete firstStats.lastTickMs;delete secondStats.lastTickMs;
+assert.deepEqual(firstStats, secondStats);
 assert.equal(first.getStats().nonfinite, 0);
 
 const frameRates = [30, 60, 120].map((fps) => {
@@ -96,5 +113,8 @@ assert.throws(() => adapter.updateFrame(-1));
 assert.throws(() => adapter.setEnvironment({ moisture: NaN }));
 assert.throws(() => adapter.setLightDirection({ x: 0, y: 0, z: 0 }));
 assert.throws(() => adapter.convertSpecies(3));
+assert.throws(() => adapter.paintFromFace(-1));
+assert.throws(() => adapter.paintFromFace(0, { radius: 0 }));
+assert.throws(() => adapter.paintFromFace(0, { strength: 2 }));
 
 console.log('PASS graph simulation adapter carries lifecycle state and isolates disconnected components');
