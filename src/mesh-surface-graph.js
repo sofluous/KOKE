@@ -103,6 +103,33 @@ export function createMeshSurfaceGraph(positions,{indices=null,weldTolerance=1e-
   return {vertices,triangles,triangleCount,vertexCount:vertices.length/3,...geometry,...links,pointAt,sample};
 }
 
+export function deriveGraphScaleDefaults(graph) {
+  if (!graph?.areas || !graph?.componentIds || !Number.isInteger(graph.componentCount) || graph.componentCount < 1
+    || graph.areas.length !== graph.componentIds.length) {
+    throw new TypeError('A complete mesh surface graph is required');
+  }
+  const componentAreas = new Float64Array(graph.componentCount);
+  let surfaceArea = 0;
+  for (let triangle = 0; triangle < graph.areas.length; triangle += 1) {
+    const area = graph.areas[triangle], component = graph.componentIds[triangle];
+    if (!Number.isFinite(area) || area < 0 || component >= graph.componentCount) throw new RangeError('Mesh graph area data is invalid');
+    componentAreas[component] += area;
+    surfaceArea += area;
+  }
+  let primarySurfaceArea = 0;
+  for (const area of componentAreas) primarySurfaceArea = Math.max(primarySurfaceArea, area);
+  if (!Number.isFinite(primarySurfaceArea) || primarySurfaceArea <= 0) throw new RangeError('Mesh graph has no usable component area');
+  const referenceSurfaceArea = 4 * Math.PI * 2.2 ** 2;
+  const linearScale = Math.sqrt(primarySurfaceArea / referenceSurfaceArea);
+  return {
+    surfaceArea,
+    primarySurfaceArea,
+    equivalentRadius: Math.sqrt(primarySurfaceArea / (4 * Math.PI)),
+    mossScale: Math.max(0.65, Math.min(1.25, linearScale)),
+    brushScale: Math.max(0.55, Math.min(1.35, linearScale)),
+  };
+}
+
 class MinHeap {
   constructor(){this.items=[];}
   push(item){let i=this.items.length;this.items.push(item);while(i){const parent=(i-1)>>1;if(this.items[parent].distance<=item.distance)break;this.items[i]=this.items[parent];i=parent;}this.items[i]=item;}

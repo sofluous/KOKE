@@ -50,11 +50,14 @@ assert.equal(computeGraphInstanceCount(100, 0.45), 45);
 assert.throws(() => computeGraphInstanceCount(100, 2));
 const renderer = createGraphRenderer(THREE, scene, geometry, graph, simulation, {
   capacity: 12, lowCapacity: 6, expansionChunkSize: 3, scheduleWork: (callback) => callback(),
-  initialQuality: 'low', initialDensity: 0.5, initialRepresentation: 'shoots', seed: 5,
+  initialQuality: 'low', initialDensity: 0.5, initialRepresentation: 'shoots', modelScale: 0.7, brushScale: 0.6, seed: 5,
 });
 assert.equal(renderer.getStats().anchors, 6);
 assert.equal(renderer.getStats().instances, 3);
 assert.equal(renderer.getStats().revision, simulation.revision);
+assert.equal(renderer.getStats().modelScale, 0.7);
+assert.equal(renderer.getStats().brushScale, 0.6);
+assert.equal(renderer.particles.material.size, 0.022 * 0.7);
 assert.equal(renderer.update(), false);
 simulation.paintFromFace(0, { radius: 2, strength: 1, speciesId: 1 });
 assert.equal(renderer.update(), true);
@@ -131,6 +134,39 @@ assert.deepEqual(staged.plants.geometry.attributes.anchorSpecies.updateRanges[0]
 staged.dispose();
 assert.equal(scene.children.length, 0);
 
+const lazyQueue = [];
+const lazy = createGraphRenderer(THREE, scene, geometry, graph, simulation, {
+  capacity: 8, lowCapacity: 4, expansionChunkSize: 2, lifecycleChunkSize: 2, scheduleWork: (callback) => lazyQueue.push(callback),
+  initialQuality: 'low', initialRepresentation: 'surface', seed: 11,
+});
+assert.equal(lazy.getStats().anchors, 0);
+assert.equal(lazy.getStats().instances, 0);
+lazy.setRepresentation('cards');
+assert.equal(lazy.getStats().expanding, true);
+lazy.setQuality('high');
+const lazyReadiness = lazy.whenHighReady();
+while (lazyQueue.length) lazyQueue.shift()();
+assert.equal(await lazyReadiness, true);
+assert.equal(lazy.getStats().anchors, 8);
+assert.equal(lazy.getStats().instances, 4);
+lazy.dispose();
+assert.equal(scene.children.length, 0);
+
+const returnQueue = [];
+const returnToSurface = createGraphRenderer(THREE, scene, geometry, graph, simulation, {
+  capacity: 8, lowCapacity: 4, expansionChunkSize: 2, scheduleWork: (callback) => returnQueue.push(callback),
+  initialQuality: 'low', initialRepresentation: 'surface', seed: 12,
+});
+returnToSurface.setRepresentation('cards');
+const cancelledReadiness = returnToSurface.whenHighReady();
+returnToSurface.setRepresentation('surface');
+assert.equal(returnToSurface.getStats().expanding, false);
+assert.equal(returnToSurface.getStats().anchors, 0);
+assert.equal(await cancelledReadiness, false);
+while (returnQueue.length) returnQueue.shift()();
+returnToSurface.dispose();
+assert.equal(scene.children.length, 0);
+
 const scheduled = [];
 const cancellable = createGraphRenderer(THREE, scene, geometry, graph, simulation, {
   capacity: 8, lowCapacity: 4, expansionChunkSize: 2, scheduleWork: (callback) => scheduled.push(callback),
@@ -144,5 +180,6 @@ assert.equal(await readiness, false);
 while (scheduled.length) scheduled.shift()();
 assert.equal(scene.children.length, 0);
 assert.throws(() => createGraphRenderer(THREE, scene, geometry, graph, {}, { capacity: 1 }));
+assert.throws(() => createGraphRenderer(THREE, scene, geometry, graph, simulation, { capacity: 1, modelScale: 0 }));
 
 console.log('PASS graph renderer reuses stable anchors and uploads lifecycle state by revision');

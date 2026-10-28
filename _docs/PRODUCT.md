@@ -1,5 +1,15 @@
 # PRODUCT
 
+## Surface-first graph allocation - 2026-10-28
+Imported models using Surface mat now create no render anchors, instance transforms or per-anchor lifecycle buffers. Surface colors still consume the complete graph simulation state, and collision, painting and spores remain immediately available. Selecting a geometric representation starts the existing deterministic builder at the active quality tier; selecting High before geometry requests 60,000 anchors directly rather than allocating Low first.
+
+Low requests upgraded to High during preparation are retained and completed in sequence, and readiness waits through any follow-up allocation. Returning to Surface cancels and disposes unfinished geometric preparation. Painting performed before geometry exists is copied into the eventual anchor buffers before the mesh swap. The repeat 9,350-triangle Chrome profile reported zero initial anchors and completed import in 188.9 ms, compared with 30,000 anchors and 275 ms in the prior staged-lifecycle run. Direct High preparation completed over 357.5 ms with a 10.1 ms largest chunk. Timing varies by browser scheduling; removal of the hidden 30,000-anchor allocation is the deterministic improvement.
+
+## Model-aware imported defaults - 2026-10-28
+Imported models now derive bounded moss and brush scales from the normalized surface area of their largest connected component. The reference is a 4.4-unit-diameter sphere, matching the import normalization envelope. Largest-component area keeps additional disconnected fragments from enlarging every shoot, and area rather than triangle count makes the result independent of tessellation density.
+
+Automatic moss scale is constrained to 0.65–1.25 and brush scale to 0.55–1.35. These factors multiply the established Size and Radius controls, so users retain the full manual adjustment workflow and built-in radial surfaces remain at scale 1. Imported shoot transforms and spore point size share the moss factor; painting and its viewport preview share the brush factor. Renderer diagnostics report both resolved factors. The bounds are visual safeguards rather than physical-unit claims because GLB source units are discarded when geometry is normalized.
+
 ## Staged graph lifecycle uploads - 2026-10-22
 Graph lifecycle revisions now copy into render-anchor buffers in reusable 8,000-anchor batches. Each batch marks only its density, biomass, vitality, stress, moisture and species ranges for GPU upload. A stable simulation snapshot prevents a batch from mixing revisions, and rapid simulation changes replace the queued revision with the newest state instead of building an unbounded backlog. Diagnostics expose synchronization progress, target revision, revision lag, maximum lifecycle chunk time and coalesced updates.
 

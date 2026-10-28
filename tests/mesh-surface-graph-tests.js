@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { createMeshSurfaceGraph, MeshSurfaceField } from '../src/mesh-surface-graph.js';
+import { createMeshSurfaceGraph, deriveGraphScaleDefaults, MeshSurfaceField } from '../src/mesh-surface-graph.js';
 
 const positions=new Float32Array([
   0,0,0, 1,0,0, 0,1,0, 1,1,0,
@@ -32,6 +32,18 @@ const expanded=new Float32Array([...indices].flatMap((index)=>[positions[index*3
 const unindexed=createMeshSurfaceGraph(expanded);
 assert.equal(unindexed.componentCount,2);
 assert.equal(unindexed.vertexCount,10);
+
+const referenceArea=4*Math.PI*2.2**2;
+const referenceDefaults=deriveGraphScaleDefaults({areas:new Float32Array([referenceArea,referenceArea*0.8]),componentIds:new Uint32Array([0,1]),componentCount:2});
+assert.ok(Math.abs(referenceDefaults.mossScale-1)<1e-6);
+assert.ok(Math.abs(referenceDefaults.brushScale-1)<1e-6);
+assert.ok(Math.abs(referenceDefaults.surfaceArea-referenceArea*1.8)<1e-4);
+assert.ok(Math.abs(referenceDefaults.primarySurfaceArea-referenceArea)<1e-4);
+const tinyDefaults=deriveGraphScaleDefaults({areas:new Float32Array([0.01]),componentIds:new Uint32Array([0]),componentCount:1});
+assert.equal(tinyDefaults.mossScale,0.65);assert.equal(tinyDefaults.brushScale,0.55);
+const largeDefaults=deriveGraphScaleDefaults({areas:new Float32Array([referenceArea*9]),componentIds:new Uint32Array([0]),componentCount:1});
+assert.equal(largeDefaults.mossScale,1.25);assert.equal(largeDefaults.brushScale,1.35);
+assert.throws(()=>deriveGraphScaleDefaults({areas:new Float32Array([1]),componentIds:new Uint32Array([2]),componentCount:1}));
 
 const painted=new MeshSurfaceField(graph);
 assert.equal(painted.paintFromTriangle(0,{radius:10,strength:1}),4);

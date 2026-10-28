@@ -1,5 +1,15 @@
 # QA
 
+## Surface-first graph allocation verification - 2026-10-28
+Renderer regressions verify zero anchors and instances in initial Surface mode, on-demand Low preparation, a Low request upgraded to High before completion, readiness across the follow-up build, final requested instance count and cancellation when the user returns to Surface. Chrome passed all 14 graph-runtime assertions: painting updated Surface colors without anchors, hidden High retained zero anchors, and switching to Cards created 60,000 anchors carrying the previously painted lifecycle state. No console, runtime or shader errors were reported.
+
+The repeat 9,350-triangle profile recorded zero initial anchors, 188.9 ms import, 357.5 ms direct High readiness, a 7.6 ms control interaction and a 10.1 ms largest preparation chunk. The previous staged-lifecycle run recorded 30,000 initial anchors and 275 ms import. Browser heap snapshots and 45-frame samples varied substantially between runs, so no retained-memory or frame-rate claim is made. Surface mode now performs no per-anchor allocation by construction; geometric modes still retain the fixed 30,000/60,000 ceilings once requested.
+
+## Model-aware imported-default verification - 2026-10-28
+Graph regressions cover the 4.4-unit reference sphere, disconnected-component isolation, lower and upper clamps, invalid component identity and scale propagation into renderer diagnostics and spore size. The renderer rejects nonpositive automatic factors. All 36 automated tests and production syntax checks pass. Chrome passed all 14 graph-runtime assertions with resolved scales of 0.65 for moss and 0.564 for the test model's brush, zero final lifecycle lag and no reported console, runtime or shader errors.
+
+The calculation is linear in graph triangles plus components and runs once per successful import. It adds no per-frame work or new allocation proportional to render-anchor count. Source units cannot be recovered after normalization, so the factors describe normalized visual scale rather than real organism dimensions. Largest-component area is robust to small disconnected debris, but an asset made of many equally small independent pieces will intentionally size moss for one piece; representative user-model review remains necessary.
+
 ## Staged lifecycle verification - 2026-10-22
 Anchor-state regressions compare arbitrary range copies plus an explicit revision commit with the original complete update across every lifecycle channel. Renderer regressions verify bounded progress, scalar and species update ranges, final revision parity and replacement of queued stale revisions. Invalid anchor ranges fail before mutation.
 

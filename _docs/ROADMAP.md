@@ -1,7 +1,7 @@
 # ROADMAP
 
 ## Current priority - studio workflow
-See [STUDIO_PROPOSAL.md](STUDIO_PROPOSAL.md). Stages 1 through 5 and topology-general GLB activation are delivered for visual review: studio shell, built-in and imported surfaces, moss representations, mapped color controls, biological moss profiles, configurable still-image export and graph-backed growth on open, folded, porous or disconnected meshes. The next graph-rendering delivery should add model-scale-aware moss defaults, then use representative user models to tune import and Low allocation cost. Earlier rendering delivery and plans below remain historical context.
+See [STUDIO_PROPOSAL.md](STUDIO_PROPOSAL.md). Stages 1 through 5 and topology-general GLB activation are delivered for visual review: studio shell, built-in and imported surfaces, moss representations, mapped color controls, biological moss profiles, configurable still-image export and graph-backed growth on open, folded, porous or disconnected meshes. Model-aware defaults and Surface-first imported allocation are delivered; representative user-model visual review is the next graph-rendering priority. Earlier rendering delivery and plans below remain historical context.
 
 The shell hierarchy was refined after review: Object now switches between Surface and Moss child panels, Scene owns external factors, and Render owns camera/quality/effects. Control columns follow Bonsai's right-aligned form rhythm.
 
@@ -43,7 +43,11 @@ The near-limit performance baseline is now recorded with a deterministic 9,350-t
 
 Chunked High preparation is delivered. The High interaction returns immediately while the renderer prepares the deterministic 60,000-anchor replacement over subsequent frames with Low geometry still visible.
 
-Staged lifecycle synchronization is also delivered. High preparation now fills lifecycle state before swapping, and recurring revisions use reusable 8,000-anchor batches with partial GPU update ranges. The repeat near-limit run measured a 6.6 ms High interaction, 370.6 ms elapsed readiness, a 10.8 ms largest High chunk and a 2.1 ms largest lifecycle chunk. Rapid playback revisions are coalesced; the sampled renderer trailed by four to five revisions during sustained evolution. Model-scale-aware moss defaults are next, followed by representative-model tuning of import and Low allocation cost.
+Staged lifecycle synchronization is also delivered. High preparation now fills lifecycle state before swapping, and recurring revisions use reusable 8,000-anchor batches with partial GPU update ranges. The repeat near-limit run measured a 6.6 ms High interaction, 370.6 ms elapsed readiness, a 10.8 ms largest High chunk and a 2.1 ms largest lifecycle chunk. Rapid playback revisions are coalesced; the sampled renderer trailed by four to five revisions during sustained evolution.
+
+Model-aware imported defaults are delivered. The largest connected component's normalized area produces bounded shoot/spore and brush factors without depending on triangle density or disconnected debris. Existing Size and Radius controls remain user multipliers, and built-in surfaces retain their prior scale. Representative-model visual review and Low allocation/import tuning are next.
+
+Surface-first graph allocation is delivered. Imported Surface mat starts with zero geometric anchors instead of 30,000, while graph colors, painting and spores remain active. Geometric modes build Low or High on demand, preserve painted lifecycle state and retain quality upgrades requested during preparation. The repeat near-limit import completed in 188.9 ms and direct High preparation in 357.5 ms with a 10.1 ms largest chunk. The next work should visually review representative user assets and decide whether geometric Low/High ceilings should also vary by normalized surface area.
 
 ## Delivery update - 2026-09-11
 - Implemented field correctness repairs: finite validated inputs, unified mapping, updated habitats, species preservation, area-weighted statistics, and fixed-time evolution.

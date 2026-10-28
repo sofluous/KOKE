@@ -211,11 +211,11 @@ const ui = createUI(
       const graphSimulation=new GraphSimulationAdapter(result.graph,{environment:{moisture:ui.state.moisture,slopeBias:ui.state.slopeBias,growthRate:ui.state.growthRate,decayRate:ui.state.decayRate,diffusionRate:ui.state.diffusionRate,colonization:ui.state.colonization,gravityCreep:ui.state.gravityCreep,cycleSpeed:ui.state.cycleSpeed},speciesCatalog:mossSpeciesCatalog,lightDirection:{x:currentLight.x,y:currentLight.y,z:currentLight.z},seed:startupSeed,initialState:ui.state.initialState,initialSpeciesId:ui.state.mossTypeId});
       let graphRenderer;
       try {
-        graphRenderer=createGraphRenderer(THREE,scene,result.geometry,result.graph,graphSimulation,{seed:startupSeed,initialQuality:ui.state.detail,initialRepresentation:ui.state.representation,initialDensity:ui.state.mossDensity,speciesPalette:speciesCatalog.map(species=>species.color),speciesProfiles:speciesCatalog.map(species=>species.renderProfile),surfaceBaseColor:ui.state.surfaceBaseColor,rootColor:ui.state.mossRootColor,tipColor:ui.state.mossTipColor,stressColor:ui.state.mossStressColor});
+        graphRenderer=createGraphRenderer(THREE,scene,result.geometry,result.graph,graphSimulation,{seed:startupSeed,initialQuality:ui.state.detail,initialRepresentation:ui.state.representation,initialDensity:ui.state.mossDensity,modelScale:result.modelDefaults.mossScale,brushScale:result.modelDefaults.brushScale,speciesPalette:speciesCatalog.map(species=>species.color),speciesProfiles:speciesCatalog.map(species=>species.renderProfile),surfaceBaseColor:ui.state.surfaceBaseColor,rootColor:ui.state.mossRootColor,tipColor:ui.state.mossTipColor,stressColor:ui.state.mossStressColor});
         const graphSpores=new GraphSporeSimulation(graphSimulation);graphSimulation.onStep=dt=>graphSpores.step(dt);
         graphRenderer.setAppearance({scale:ui.state.mossScale,aspect:ui.state.mossAspect});graphRenderer.setAdaptiveDetail(ui.state.adaptiveDetail);graphRenderer.setWireframe(ui.state.wireframe);
         graphRuntime?.mossRenderer.dispose();importedSurface?.geometry.dispose();importedSurface=result;
-        graphRuntime={type:'graph',simulation:graphSimulation,mossRenderer:graphRenderer,spores:graphSpores,source:result};
+        graphRuntime={type:'graph',simulation:graphSimulation,mossRenderer:graphRenderer,spores:graphSpores,source:result,brushScale:result.modelDefaults.brushScale};
       } catch(error) { graphRenderer?.dispose();result.geometry.dispose();throw error; }
       selectRuntime(graphRuntime);ui.state.surface='imported';
       diagnostics?.pushLog(`Imported graph GLB: ${result.name} (${result.triangleCount} triangles, ${result.topology.componentCount} component${result.topology.componentCount===1?'':'s'}).`);
@@ -320,6 +320,10 @@ const worldP1 = new THREE.Vector3();
 const ndcP0 = new THREE.Vector3();
 const ndcP1 = new THREE.Vector3();
 
+function activeBrushRadius() {
+  return ui.state.paintRadius * (activeRuntime.type === 'graph' ? activeRuntime.brushScale : 1);
+}
+
 function pointerToNdc(event) {
   const rect = canvas.getBoundingClientRect();
   pointerNdc.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -334,7 +338,7 @@ function paintFromEvent(event) {
   if (!hits.length) return;
 
   const brush = {
-    radius: ui.state.paintRadius,
+    radius: activeBrushRadius(),
     strength: ui.state.paintStrength,
     speciesId: ui.state.paintSpeciesId,
     erase: ui.state.paintErase,
@@ -347,7 +351,7 @@ function paintFromEvent(event) {
     const now = performance.now();
     if (now - lastPaintLogAt > 180) {
       diagnostics?.pushLog(
-        `${ui.state.paintErase ? "Erase" : "Paint"} stroke: ${painted} texels @ r=${ui.state.paintRadius.toFixed(2)}`
+        `${ui.state.paintErase ? "Erase" : "Paint"} stroke: ${painted} texels @ r=${brush.radius.toFixed(2)}`
       );
       lastPaintLogAt = now;
     }
@@ -380,7 +384,7 @@ function updateBrushPreview(event) {
   camera.getWorldDirection(cameraRight);
   cameraRight.cross(camera.up).normalize();
   worldP0.copy(hit);
-  worldP1.copy(hit).addScaledVector(cameraRight, ui.state.paintRadius);
+  worldP1.copy(hit).addScaledVector(cameraRight, activeBrushRadius());
   ndcP0.copy(worldP0).project(camera);
   ndcP1.copy(worldP1).project(camera);
   const radiusPx = Math.max(8, Math.abs(ndcP1.x - ndcP0.x) * rect.width * 0.5);

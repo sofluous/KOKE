@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 2026-10-28 - Surface-first graph allocation
+- Removed hidden Low anchor, transform and lifecycle-buffer construction from imported Surface mat initialization.
+- Reused progressive preparation for on-demand Low and High geometric modes, including quality upgrades requested during an active build.
+- Cancelled and disposed unfinished geometric preparation when returning to Surface.
+- Made exact-detail readiness wait through chained capacity preparation and preserved pre-allocation painting in the eventual geometric buffers.
+- Updated browser coverage to verify immediate Surface painting, zero hidden anchors and painted High lifecycle state.
+- Recorded zero initial anchors and 188.9 ms import on the repeat near-limit profile, versus 30,000 anchors and 275 ms previously; direct High preparation completed in 357.5 ms with a 10.1 ms maximum chunk.
+
+## 2026-10-28 - model-aware imported defaults
+- Derived imported moss and brush factors from largest-component normalized surface area using the existing 4.4-unit import envelope as the reference.
+- Bounded moss scale to 0.65–1.25 and brush scale to 0.55–1.35 so unusual topology cannot create unusable defaults.
+- Applied automatic moss scale to graph shoot transforms and spore size while retaining the Size control as a multiplier.
+- Applied automatic brush scale to face-index painting and the viewport preview while retaining the Radius control as a multiplier.
+- Exposed resolved moss and brush factors in graph renderer diagnostics and added numerical, validation, renderer and Chrome integration coverage.
+- Passed all 36 automated tests, production syntax checks and 14 Chrome graph-runtime assertions without reported console, runtime or shader errors.
+
 ## 2026-10-22 - staged graph lifecycle uploads
 - Split render-anchor lifecycle mapping into validated range copies and an explicit complete-revision commit while preserving the synchronous update contract.
 - Added reusable simulation snapshots, 8,000-anchor scheduled lifecycle batches, partial GPU attribute update ranges and latest-revision coalescing.

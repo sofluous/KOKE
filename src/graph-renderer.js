@@ -182,6 +182,10 @@ export function createGraphRenderer(THREE, scene, meshGeometry, graph, simulatio
   if (!Number.isInteger(maxCapacity) || maxCapacity < 1 || maxCapacity > GRAPH_RENDER_COUNTS.high) throw new RangeError('Graph render capacity is invalid');
   const lowCapacity = options.lowCapacity ?? (options.capacity === undefined ? Math.min(GRAPH_RENDER_COUNTS.low, maxCapacity) : maxCapacity);
   if (!Number.isInteger(lowCapacity) || lowCapacity < 1 || lowCapacity > maxCapacity) throw new RangeError('Graph Low render capacity is invalid');
+  const modelScale = options.modelScale ?? 1, brushScale = options.brushScale ?? 1;
+  if (!Number.isFinite(modelScale) || modelScale <= 0 || !Number.isFinite(brushScale) || brushScale <= 0) {
+    throw new RangeError('Graph model scale defaults must be positive');
+  }
   const renderGeometry = meshGeometry.index && meshGeometry.toNonIndexed ? meshGeometry.toNonIndexed() : meshGeometry.clone();
   const surfaceColors = new Float32Array(renderGeometry.attributes.position.count * 3);
   const surfaceColorAttribute = new THREE.BufferAttribute(surfaceColors, 3);
@@ -213,7 +217,7 @@ export function createGraphRenderer(THREE, scene, meshGeometry, graph, simulatio
       dummy.position.addScaledVector(normal, 0.004);
       dummy.quaternion.setFromUnitVectors(up, normal);
       dummy.rotateY(nextAnchors.variations[anchor] * Math.PI * 2);
-      const radius = 0.055 + nextAnchors.variations[anchor] * 0.055;
+      const radius = (0.055 + nextAnchors.variations[anchor] * 0.055) * modelScale;
       dummy.scale.set(radius, radius, radius);
       dummy.updateMatrix(); nextPlants.setMatrixAt(anchor, dummy.matrix);
     }
@@ -236,7 +240,7 @@ export function createGraphRenderer(THREE, scene, meshGeometry, graph, simulatio
     nextPlants.instanceMatrix.needsUpdate = true;
     return { anchors: nextAnchors, anchorState: nextState, stateAttributes: nextAttributes, plants: nextPlants };
   }
-  let plantSet = buildPlants(lowCapacity);
+  let plantSet = buildPlants(representation === 'surface' ? 0 : lowCapacity);
   let { anchors, anchorState, stateAttributes, plants } = plantSet;
   group.add(plants);
   const particlePositions = new Float32Array(1024 * 3);
@@ -244,7 +248,7 @@ export function createGraphRenderer(THREE, scene, meshGeometry, graph, simulatio
   const particlePositionAttribute=new THREE.BufferAttribute(particlePositions,3);particlePositionAttribute.setUsage?.(THREE.DynamicDrawUsage);
   particleGeometry.setAttribute('position',particlePositionAttribute);
   particleGeometry.setDrawRange(0, 0);
-  const particleMaterial = new THREE.PointsMaterial({ color: '#e7efad', size: 0.022, transparent: true, opacity: 0.8, depthWrite: false });
+  const particleMaterial = new THREE.PointsMaterial({ color: '#e7efad', size: 0.022 * modelScale, transparent: true, opacity: 0.8, depthWrite: false });
   const particles = new THREE.Points(particleGeometry, particleMaterial); particles.frustumCulled = false; group.add(particles);
   let lastSporeRevision = -1, adaptiveDetail = options.adaptiveDetail !== false, viewDistance = 4;
   let lodFactor = adaptiveDetail ? computeShootLodFactor(viewDistance) : 1;
@@ -314,6 +318,10 @@ export function createGraphRenderer(THREE, scene, meshGeometry, graph, simulatio
 
   function requestLifecycleSync(state) {
     if (state.revision === anchorState.revision) return false;
+    if (anchors.count === 0) {
+      anchorState.commit(state);
+      return true;
+    }
     if (lifecycleSync) {
       if (state.revision === lifecycleSync.snapshot.revision || state.revision === queuedLifecycleRevision) return false;
       if (queuedLifecycleRevision >= 0) coalescedLifecycleUpdates += 1;
@@ -347,13 +355,25 @@ export function createGraphRenderer(THREE, scene, meshGeometry, graph, simulatio
   function disposePlantMesh(target) {
     target.geometry.dispose?.(); target.material.dispose?.(); target.customDepthMaterial.dispose?.();
   }
+  function cancelExpansion() {
+    if (!expansion) return false;
+    const pending = expansion;
+    expansion = null;
+    disposePlantMesh(pending.plants);
+    pending.resolve(false);
+    return true;
+  }
   function ensurePlantCapacity(capacity) {
-    if (anchors.count >= capacity || expansion) return false;
+    if (anchors.count >= capacity) return false;
+    if (expansion) {
+      expansion.requestedCapacity = Math.max(expansion.requestedCapacity, capacity);
+      return false;
+    }
     const startedAt = performance.now(), builder = createMeshRenderAnchorBuilder(graph, { count: capacity, seed: options.seed ?? 0 });
     const pendingState = new MeshRenderAnchorState(builder.anchors, simulation.speciesCount);
     const pendingPlants = createPlantMesh(capacity, geometryForMode(THREE, 'triangles'));
     let resolveExpansion;
-    const record = { builder, plants: pendingPlants, state: pendingState, progress: 0, phase: 'anchors',
+    const record = { builder, plants: pendingPlants, state: pendingState, progress: 0, phase: 'anchors', requestedCapacity: capacity,
       promise: new Promise((resolve) => { resolveExpansion = resolve; }), resolve: resolveExpansion };
     expansion = record;
     const advance = () => {
@@ -391,7 +411,10 @@ export function createGraphRenderer(THREE, scene, meshGeometry, graph, simulatio
       lifecycleSync = null; queuedLifecycleRevision = -1;
       expansion = null; update(); syncVisibility();
       maxExpansionChunkMs = Math.max(maxExpansionChunkMs, performance.now() - chunkStartedAt);
-      lastExpansionMs = performance.now() - startedAt; record.resolve(true);
+      lastExpansionMs = performance.now() - startedAt;
+      const followUpCapacity = record.requestedCapacity;
+      record.resolve(true);
+      if (followUpCapacity > anchors.count && representation !== 'surface') ensurePlantCapacity(followUpCapacity);
     };
     scheduleWork(advance);
     return true;
@@ -400,7 +423,8 @@ export function createGraphRenderer(THREE, scene, meshGeometry, graph, simulatio
     if (!['surface', 'triangles', 'diamonds', 'cards', 'clumps', 'shoots'].includes(next)) throw new RangeError('Unknown graph moss representation');
     const changed = next !== representation;
     representation = next;
-    if (next !== 'surface' && currentQuality === 'high') ensurePlantCapacity(maxCapacity);
+    if (next === 'surface') cancelExpansion();
+    else ensurePlantCapacity(currentQuality === 'high' ? maxCapacity : lowCapacity);
     if (next !== 'surface' && changed) {
       const replacement = geometryForMode(THREE, next);
       stateAttributes = attachStateAttributes(THREE, replacement, anchorState, anchors.variations);
@@ -460,6 +484,7 @@ export function createGraphRenderer(THREE, scene, meshGeometry, graph, simulatio
     return { type: 'graph', anchors: anchors.count, instances: plants.count, clumpCount: plants.visible ? plants.count : 0,
       maxClumps: anchors.count, tuftCount: plants.visible ? plants.count : 0, tuftCapacity: anchors.count, maxCapacity, quality: currentQuality, density,
       representation, revision: anchorState.revision, visible: plants.visible, triangles: graph.triangleCount,
+      modelScale: Number(modelScale.toFixed(3)), brushScale: Number(brushScale.toFixed(3)),
       adaptiveDetail, lodFactor: Number(lodFactor.toFixed(3)), viewDistance: Number(viewDistance.toFixed(2)),
       expanding: Boolean(expansion), expansionProgress: Number((expansion?.progress ?? 1).toFixed(3)),
       lastExpansionMs: Number(lastExpansionMs.toFixed(2)), maxExpansionChunkMs: Number(maxExpansionChunkMs.toFixed(2)),
@@ -469,12 +494,15 @@ export function createGraphRenderer(THREE, scene, meshGeometry, graph, simulatio
       maxLifecycleChunkMs: Number(maxLifecycleChunkMs.toFixed(2)), coalescedLifecycleUpdates };
   }
   function dispose() {
-    disposed = true; lifecycleSync = null; if(expansion){const pending=expansion;expansion=null;disposePlantMesh(pending.plants);pending.resolve(false);}
+    disposed = true; lifecycleSync = null; cancelExpansion();
     scene.remove(group); disposePlantMesh(plants); renderGeometry.dispose?.(); surfaceMaterial.dispose?.();
     particleGeometry.dispose?.(); particleMaterial.dispose?.();
   }
   syncVisibility(); update();
   return { group, mesh: surfaceMesh, get plants(){return plants;}, particles, get anchors(){return anchors;}, get anchorState(){return anchorState;}, collision, update, setRepresentation,
     setQuality, setDensity, setAppearance, setSurfaceAppearance, setAdaptiveDetail, setViewDistance, setDew, setWireframe,
-    whenHighReady(){return expansion?.promise||Promise.resolve(anchors.count>=maxCapacity);}, getStats, dispose };
+    async whenHighReady(){
+      while (expansion) await expansion.promise;
+      return anchors.count >= maxCapacity;
+    }, getStats, dispose };
 }

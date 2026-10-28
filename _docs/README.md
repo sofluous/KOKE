@@ -12,6 +12,8 @@ This folder tracks product intent, delivery stages, and quality checks for the m
 - [Graph spores](data/GRAPH_SPORES_2026-10-20.md): accelerated mesh collision and species-preserving particle lifecycle.
 - [General-model runtime](data/GENERAL_MODEL_RUNTIME_2026-10-22.md): coordinated UI activation, Chrome coverage and remaining performance work.
 - [Near-limit graph performance](data/GRAPH_PERFORMANCE_REVIEW_2026-10-22.md): deterministic 9,350-triangle workload, synchronous/chunked/staged lifecycle measurements and optimization priorities.
+- [Model-aware imported defaults](PRODUCT.md#model-aware-imported-defaults---2026-10-28): bounded surface-area scaling for moss, spores and brush interaction.
+- [Surface-first graph allocation](PRODUCT.md#surface-first-graph-allocation---2026-10-28): zero-anchor Surface imports and on-demand Low/High geometry.
 - Current regression commands: `npm test` and `npm run check`.
 - The audit/probes below are the historical baseline before the redesign.
 
